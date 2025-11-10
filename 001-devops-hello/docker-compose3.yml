@@ -1,0 +1,32 @@
+# 🧱 Docker Compose sürümünü belirtiyorum (3.9 ile modern Compose özelliklerini kullanıyorum).
+version: "3.9"
+
+# 🧩 Servisleri tanımlamaya başlıyorum (her biri ayrı bir container olacak).
+services:
+
+  # 🐇 RabbitMQ servisini tanımlıyorum — mesajlaşma kuyruğu sistemim.
+  rabbitmq:
+    # 🐳 RabbitMQ’nun yönetim paneli içeren imajını kullanıyorum (3-management sürümü).
+    image: rabbitmq:3-management
+    # 🏷️ Container’a anlamlı bir isim veriyorum, izlemeyi kolaylaştırıyorum.
+    container_name: rabbitmq-1
+    # 🚪 Dış dünyadan erişim için gerekli portları açıyorum (5672 = mesaj trafiği(ana/baba instance), 15672 = yönetim paneli).
+    ports:
+      - 5672:5672
+      - 15672:15672
+    # 🌍 Ortam değişkenleriyle RabbitMQ’nun ilk kullanıcı ayarlarını yapıyorum.
+    environment:
+      # 🔑 Varsayılan kullanıcı şifresini admin olarak belirliyorum.
+      - "RABBITMQ_DEFAULT_PASS=admin"
+      # 👤 Varsayılan kullanıcı adını admin olarak belirliyorum.
+      - "RABBITMQ_DEFAULT_USER=admin"
+      # 📦 Varsayılan sanal host’u (vhost) tanımlıyorum.
+      # 🐇 vhost (virtual host), RabbitMQ içinde farklı uygulamaların veya servislerin birbirinden izole şekilde kendi kuyruklarını, değişkenlerini ve izinlerini yönetebildiği sanal bir çalışma alanıdır. 🧩
+      - "RABBITMQ_DEFAULT_VHOST='vhost'"
+    # 💾 RabbitMQ verilerinin kalıcı olması için volume tanımlıyorum.
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+# 💽 Volume tanımını yapıyorum, container silinse bile veriler kaybolmasın diye.
+volumes:
+  rabbitmq_data:
