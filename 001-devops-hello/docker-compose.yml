@@ -1,0 +1,22 @@
+# Use root/example as user/password credentials  ⚙️ Kullanıcı adı ve şifre olarak root/toor bilgilerini kullanacağım.
+version: '3.1'  #📄 Docker Compose sürümünü 3.1 olarak belirtiyorum.
+
+services:  # 🧩 Servisleri tanımlamaya başlıyorum (her biri ayrı konteyner olacak).
+
+  mongo:  # 🍃 MongoDB veritabanı servisini başlatıyorum.
+    image:  mongo  # 📦 Resim olarak resmi MongoDB imajını kullanıyorum.
+    restart:  always  # 🔁 Konteyner durursa otomatik olarak yeniden başlatılacak.
+    environment:  # 🌍 Ortam değişkenlerini tanımlıyorum.
+      MONGO_INITDB_ROOT_USERNAME: root  # 👤 Root kullanıcı adını belirliyorum.
+      MONGO_INITDB_ROOT_PASSWORD: toor  # 🔑 Root kullanıcı şifresini tanımlıyorum.
+
+  mongo-express:  # 💻 MongoDB’yi tarayıcıdan yönetebilmemi sağlayan web arayüzü.
+    image: mongo-express  # 📦 Resim olarak resmi Mongo Express imajını kullanıyorum.
+    restart: always  # 🔁 Her durduğunda otomatik yeniden başlatılsın.
+    ports:  # 🌐 Dış dünyaya hangi porttan erişileceğini belirtiyorum.
+      - 8081:8081  # 🚪 Tarayıcıdan 8081 portuyla erişeceğim (localhost:8081).
+    environment:  # 🌍 Ortam değişkenlerini ayarlıyorum.
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root  # 👤 Mongo Express’in bağlanacağı MongoDB kullanıcı adı.
+      ME_CONFIG_MONGODB_ADMINPASSWORD: toor  # 🔑 Mongo Express’in bağlanacağı MongoDB şifresi.
+      ME_CONFIG_MONGODB_URL: mongodb://root:toor@mongo:27017/  # 🌐 MongoDB bağlantı adresini tanımlıyorum.
+      ME_CONFIG_BASICAUTH: false  # 🚫 Girişte ek kullanıcı adı/şifre sormasını devre dışı bırakıyorum.
