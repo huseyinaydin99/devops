@@ -1,0 +1,77 @@
+# 🧱 Docker Compose dosyası sürümünü belirtiyorum (v3 ile modern YAML yapısını kullanıyorum).
+version: '3'
+
+# 🌐 ELK (Elasticsearch, Logstash, Kibana) servislerinin iletişim kuracağı özel bir ağ tanımlıyorum.
+networks:
+  elk:
+
+# 💾 Elasticsearch verilerini kalıcı tutmak için yerel bir volume oluşturuyorum.
+volumes:
+  elasticsearch:
+    driver: local
+
+# 🧩 Servisleri (container’ları) tanımlamaya başlıyorum.
+services:
+
+  # 🔍 Elasticsearch servisi — log verilerini saklayan ve sorgulayan motor.
+  elasticsearch:
+    environment:
+      # 🌍 Elasticsearch’ün dış dünyadan gelen HTTP bağlantılarını kabul etmesini sağlıyorum.
+      http.host: 0.0.0.0
+      # 🔒 Node’lar arası iletişimin sadece localhost üzerinden yapılmasını belirtiyorum.
+      transport.host: 127.0.0.1
+    # 🐳 Elasticsearch’ün 6.2.1 sürümünü resmi Docker imajından çekiyorum.
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.2.1
+    # 🔗 Bu servisi yukarıda tanımladığım “elk” ağına bağlıyorum.
+    networks:
+      elk: null
+    # 🚪 Elasticsearch’ün dışarıya açılacak portunu belirliyorum (tarayıcıdan 9200 ile erişilebilir).
+    ports:
+      - 9200:9200
+    # 🔁 Container kapansa bile otomatik olarak yeniden başlatılmasını sağlıyorum.
+    restart: unless-stopped
+    # 💽 Elasticsearch verilerini container dışında kalıcı olarak tutuyorum.
+    volumes:
+      - elasticsearch:/usr/share/elasticsearch/data:rw
+
+  # ⚙️ Logstash servisi — logları alır, işler ve Elasticsearch’e gönderir.
+  logstash:
+    # 🐳 Resmi Logstash OSS (açık kaynak) imajını kullanıyorum.
+    image: docker.elastic.co/logstash/logstash-oss:6.2.1
+    # 🔗 Elasticsearch servisine bağımlı olduğunu belirtiyorum (önce Elasticsearch başlar).
+    depends_on:
+      - elasticsearch
+    # 🌐 Aynı “elk” ağına dahil ediyorum, böylece servisler birbirini görebilir.
+    networks:
+      elk: null
+    # 🚪 Logstash’in dinleyeceği portu dış dünyaya açıyorum (5044, genelde Beats için).
+    ports:
+      - 5044:5044
+    # 🔁 Kapanırsa otomatik başlatılacak şekilde ayarlıyorum.
+    restart: unless-stopped
+    # 📂 Logstash pipeline yapılandırma dosyalarını dışarıdan container’a bağlıyorum (read-only).
+    volumes:
+      - ./etc/logstash/pipeline:/usr/share/logstash/pipeline:ro
+
+  # 📊 Kibana servisi — Elasticsearch verilerini görselleştiren web arayüzü.
+  kibana:
+    # 🔗 Elasticsearch’e bağlı çalışması gerektiğini belirtiyorum.
+    depends_on:
+      - elasticsearch
+    environment:
+      # 🔑 Elasticsearch erişimi için gerekli kullanıcı şifresini tanımlıyorum.
+      ELASTICSEARCH_PASSWORD: toor
+      # 🌍 Elasticsearch’e bağlanacağı URL’yi belirtiyorum.
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      # 👤 Elasticsearch kullanıcı adını tanımlıyorum.
+      ELASTICSEARCH_USERNAME: elastic
+    # 🐳 Kibana’nın açık kaynak sürümünü kullanıyorum.
+    image: docker.elastic.co/kibana/kibana-oss:6.2.1
+    # 🌐 Kibana’yı da aynı “elk” ağına bağlıyorum.
+    networks:
+      elk: null
+    # 🚪 Kibana’nın web arayüzüne 5601 portu üzerinden erişileceğini belirtiyorum.
+    ports:
+      - 5601:5601
+    # 🔁 Kapanırsa otomatik yeniden başlatılsın.
+    restart: unless-stopped
