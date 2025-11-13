@@ -1,0 +1,22 @@
+# Bu satır, tanımladığım Service nesnesinin Kubernetes API sözlüğünde v1 şemasına göre yorumlanacağını söyleyerek manifest’in temel bağlamını belirliyor. 📘
+apiVersion: v1
+# Burada kaynağın türünü Service olarak işaretleyip, trafiği Pod’lara yönlendiren soyut bir ağ katmanı tanımlayacağımı ilan ediyorum. 🌐
+kind: Service
+# Bu blok, Service’in adı gibi kimlik bilgilerini taşıyan metadata kısmını başlatıyor ve objeyi cluster içinde adreslenebilir hale getiriyor. 🏷️
+metadata:
+  # Service’e “docker-loadbalancer” adını vererek, hem kubectl çıktılarında hem dokümantasyonda kolayca tanınan net bir kimlik oluşturuyorum. 🧾
+  name: docker-loadbalancer
+# Bu blok, Service’in hangi Pod’ları hedefleyeceğini, hangi tip davranış göstereceğini ve hangi portlardan yayın yapacağını tanımlayan asıl yapılandırma alanıdır. ⚙️
+spec:
+  # selector alanında, trafiği hangi label’lara sahip Pod’lara göndereceğimi belirleyip Service ile hedef uygulama grubu arasında mantıksal bir bağ kuruyorum. 🎯
+  selector:
+    # app=devops-001-hello label’ına sahip tüm Pod’ları bu Service’in arkasındaki havuzun doğal üyesi yaparak, load balancing için tutarlı bir hedef seti tanımlıyorum. 🧩
+    app: devops-001-hello
+  # type alanında LoadBalancer seçerek, Service’in sadece cluster içinde değil, dış dünyaya da bir bulut load balancer üzerinden açılmasını ve sabit bir giriş noktası oluşturmasını sağlıyorum. 🛰️
+  type: LoadBalancer
+  # ports bloğu, dış istemcilerin hangi porttan Service’e ulaşacağını ve bu trafiğin Pod içindeki hangi uygulama portuna yönleneceğini tarif eden ağ köprüsünü kuruyor. 🔀
+  ports:
+    # Bu satır, dışarıdan gelen isteklerin 8087 portu üzerinden Service’e gireceğini ve bu portun load balancer tarafındaki görünür kapı olacağını ifade ediyor. 🚪
+    - port: 8087
+      # targetPort ile, 8087’ye gelen trafiğin Pod içindeki gerçek uygulama portu olan 8080’e aktarılacağını söyleyerek dış–iç port eşlemesini netleştiriyorum. 🔌
+      targetPort: 8080
