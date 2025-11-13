@@ -1,0 +1,85 @@
+### Bu YAML dosyasında, Kubernetes cluster’ımda **iki ayrı Pod** tanımlıyorum;
+# biri backend tarafını temsil eden `devops-001-hello`, diğeri ise farklı bir
+# uygulama/proje için ayrılmış `my-new-pod2` Pod’u ve ikisini de bilinçli olarak
+# ayrı **etiketler, portlar ve imajlar** üzerinden konumlandırarak hem mimariyi
+# hem de yönetilebilirliği kafamda netleştiriyorum. 💼🧱
+
+# Bu satır, Kubernetes manifest dosyasının hangi API sürümü ile işlendiğini belirtir. 📘
+apiVersion: v1
+# Bu satır, oluşturulan kaynağın türünün bağımsız çalışan bir Pod olduğunu söyler. 📦
+kind: Pod
+# Bu blok, Pod’un adı ve etiketleri gibi tanımlayıcı meta bilgilerini içerir. 🏷️
+metadata:
+  # Bu satır, Pod’un küme içinde benzersiz olacak adını belirler. 🧾
+  name: devops-001-hello
+  # Bu blok, Pod’a iliştirilecek etiketlerin (label) tanımlandığı yerdir. 🧩
+  labels:
+    # Bu satır, Pod’u isim bazlı gruplamak ve filtrelemek için kullanılan bir label değeridir. 🧷
+    name: devops-001-hello
+    # Bu satır, bu Pod’un mimaride backend tarafında çalışan bir bileşen olduğunu ifade eden etikettir. ⚙️
+    type: backend
+    # Bu satır, Pod’un hello-service adlı uygulamaya ait olduğunu gösteren uygulama etiketidir. 🔔
+    app: hello-service
+    # Bu satır, Pod’un hangi projeye ait olduğunu belirten proje etiketi tanımıdır. 📂
+    project-name: mydemo
+# Bu blok, Pod içinde çalışacak container’ların tanımlandığı ana kısımdır. 🧱
+spec:
+  # Bu liste, Pod içerisinde yer alacak tüm container tanımlarını barındırır. 📦
+  containers:
+    # Bu blok, Pod içindeki tek bir container örneğini ve özelliklerini tanımlar. 🧊
+    - name: devops-001-hello
+      # Bu satır, container’ın hangi Docker imajından (image) oluşturulacağını belirtir. 🐳
+      image: huseyin11/devops-001-hello
+      # Bu blok, container’ın kullanabileceği CPU ve bellek limitlerini tanımlar. 📊
+      resources:
+        # Bu blok, container’ın aşamayacağı üst kaynak sınırlarının belirtildiği yerdir. 🚦
+        limits:
+          # Bu satır, container’ın kullanabileceği en yüksek bellek miktarını 128Mi ile sınırlar. 💾
+          memory: "128Mi"
+          # Bu satır, container’ın CPU kullanımını 500 milicpu ile sınırlandırır. 🧠
+          cpu: "500m"
+      # Bu blok, container’ın hangi port(lar) üzerinden dinleme yapacağını tanımlar. 🌐
+      ports:
+        # Bu satır, container içinde uygulamanın 9090 numaralı port üzerinden erişilebilir olduğunu belirtir. 📡
+        - containerPort: 9090
+
+# Bu satır, manifest içinde yeni bir Kubernetes objesinin başladığını gösteren YAML ayırıcıdır. ✂️
+---
+# Bu satır, ikinci kaynağın da Kubernetes’in v1 API sürümünü kullandığını belirtir. 📘
+apiVersion: v1
+# Bu satır, ikinci kaynağın da bağımsız bir Pod olduğunu ifade eder. 📦
+kind: Pod
+# Bu blok, ikinci Pod’un adı ve etiketleri gibi kimlik bilgilerini içerir. 🏷️
+metadata:
+  # Bu satır, ikinci Pod’un küme içindeki benzersiz adını belirler. 🧾
+  name: my-new-pod2
+  # Bu blok, ikinci Pod’a ait etiketlerin tanımlandığı yerdir. 🧩
+  labels:
+    # Bu satır, Pod’u isim bazlı ayırt etmek için kullanılan name label’ını belirtir. 🧷
+    name: my-new-pod2
+    # Bu satır, bu Pod’un mimaride frontend tarafında konumlandığını anlatan tip etiketidir. 🎨
+    type: fronend
+    # Bu satır, Pod’un mydemo2-service adlı uygulama grubuna ait olduğunu ifade eden uygulama etiketidir. 🛎️
+    app: mydemo2-service
+    # Bu satır, ikinci Pod’un mydemo2 adlı projeye bağlı olduğunu belirten proje etiketidir. 📂
+    project-name: mydemo2
+# Bu blok, ikinci Pod içinde çalışacak container tanımlarını barındıran ana bölümdür. 🧱
+spec:
+  # Bu liste, ikinci Pod’a ait tüm container’ların tek tek tanımlandığı yerdir. 📦
+  containers:
+    # Bu blok, my-new-pod2 adlı tekil container’ın özelliklerini tanımlar. 🧊
+    - name: my-new-pod2
+      # Bu satır, container’ın kullanacağı Docker imajının adını ve sürüm etiketini (tag) belirtir. 🐳
+      image: huseyin11/devops-001-hello:v001
+      # Bu blok, container’a atanacak CPU ve bellek limitleri için kaynak yapılandırmasını içerir. 📊
+      resources:
+        # Bu blok, container’ın aşamayacağı maksimum kaynak kullanım limitlerini tanımlar. 🚦
+        limits:
+          # Bu satır, ikinci Pod’daki container’ın hafıza kullanımını 128Mi ile sınırlandırır. 💾
+          memory: "128Mi"
+          # Bu satır, container’ın CPU kullanımını 500 milicpu olarak üst sınırlandırır. 🧠
+          cpu: "500m"
+      # Bu blok, container’ın dışardan hangi port üzerinden dinleme yapacağını belirler. 🌐
+      ports:
+        # Bu satır, ikinci container’ın 9091 numaralı port üzerinden istekleri kabul edeceğini belirtir. 📡
+        - containerPort: 9091

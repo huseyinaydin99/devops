@@ -954,3 +954,154 @@ CI/CD entegrasyonu, kod push edildiği anda test, build, container imaj üretimi
 #### ❤7.5 🌱 GitOps (ArgoCD, Flux)
 
 GitOps, Kubernetes manifest’lerini Git deposunda tek gerçek kaynak (single source of truth) kabul edip, ArgoCD veya Flux gibi araçlarla cluster durumunu bu Git repo ile senkron tutan bir yaklaşımdır; bu sayede konfigürasyon değişiklikleri commit’lenir, review edilir ve gerektiğinde geçmiş commit’lere dönülerek infrastructure as code mantığıyla yönetilir. 🧾
+
+---
+
+---
+
+#### ❤8.0 💠 Kubernetes Pod Çifti: Backend & Frontend Ayar Manifestlerim 🚀📦
+
+```yaml
+### Bu YAML dosyasında, Kubernetes cluster’ımda **iki ayrı Pod** tanımlıyorum;
+# biri backend tarafını temsil eden `devops-001-hello`, diğeri ise farklı bir
+# uygulama/proje için ayrılmış `my-new-pod2` Pod’u ve ikisini de bilinçli olarak
+# ayrı **etiketler, portlar ve imajlar** üzerinden konumlandırarak hem mimariyi
+# hem de yönetilebilirliği kafamda netleştiriyorum. 💼🧱
+
+# Bu satır, Kubernetes manifest dosyasının hangi API sürümü ile işlendiğini belirtir. 📘
+apiVersion: v1
+# Bu satır, oluşturulan kaynağın türünün bağımsız çalışan bir Pod olduğunu söyler. 📦
+kind: Pod
+# Bu blok, Pod’un adı ve etiketleri gibi tanımlayıcı meta bilgilerini içerir. 🏷️
+metadata:
+  # Bu satır, Pod’un küme içinde benzersiz olacak adını belirler. 🧾
+  name: devops-001-hello
+  # Bu blok, Pod’a iliştirilecek etiketlerin (label) tanımlandığı yerdir. 🧩
+  labels:
+    # Bu satır, Pod’u isim bazlı gruplamak ve filtrelemek için kullanılan bir label değeridir. 🧷
+    name: devops-001-hello
+    # Bu satır, bu Pod’un mimaride backend tarafında çalışan bir bileşen olduğunu ifade eden etikettir. ⚙️
+    type: backend
+    # Bu satır, Pod’un hello-service adlı uygulamaya ait olduğunu gösteren uygulama etiketidir. 🔔
+    app: hello-service
+    # Bu satır, Pod’un hangi projeye ait olduğunu belirten proje etiketi tanımıdır. 📂
+    project-name: mydemo
+# Bu blok, Pod içinde çalışacak container’ların tanımlandığı ana kısımdır. 🧱
+spec:
+  # Bu liste, Pod içerisinde yer alacak tüm container tanımlarını barındırır. 📦
+  containers:
+    # Bu blok, Pod içindeki tek bir container örneğini ve özelliklerini tanımlar. 🧊
+    - name: devops-001-hello
+      # Bu satır, container’ın hangi Docker imajından (image) oluşturulacağını belirtir. 🐳
+      image: huseyin11/devops-001-hello
+      # Bu blok, container’ın kullanabileceği CPU ve bellek limitlerini tanımlar. 📊
+      resources:
+        # Bu blok, container’ın aşamayacağı üst kaynak sınırlarının belirtildiği yerdir. 🚦
+        limits:
+          # Bu satır, container’ın kullanabileceği en yüksek bellek miktarını 128Mi ile sınırlar. 💾
+          memory: "128Mi"
+          # Bu satır, container’ın CPU kullanımını 500 milicpu ile sınırlandırır. 🧠
+          cpu: "500m"
+      # Bu blok, container’ın hangi port(lar) üzerinden dinleme yapacağını tanımlar. 🌐
+      ports:
+        # Bu satır, container içinde uygulamanın 9090 numaralı port üzerinden erişilebilir olduğunu belirtir. 📡
+        - containerPort: 9090
+
+# Bu satır, manifest içinde yeni bir Kubernetes objesinin başladığını gösteren YAML ayırıcıdır. ✂️
+---
+# Bu satır, ikinci kaynağın da Kubernetes’in v1 API sürümünü kullandığını belirtir. 📘
+apiVersion: v1
+# Bu satır, ikinci kaynağın da bağımsız bir Pod olduğunu ifade eder. 📦
+kind: Pod
+# Bu blok, ikinci Pod’un adı ve etiketleri gibi kimlik bilgilerini içerir. 🏷️
+metadata:
+  # Bu satır, ikinci Pod’un küme içindeki benzersiz adını belirler. 🧾
+  name: my-new-pod2
+  # Bu blok, ikinci Pod’a ait etiketlerin tanımlandığı yerdir. 🧩
+  labels:
+    # Bu satır, Pod’u isim bazlı ayırt etmek için kullanılan name label’ını belirtir. 🧷
+    name: my-new-pod2
+    # Bu satır, bu Pod’un mimaride frontend tarafında konumlandığını anlatan tip etiketidir. 🎨
+    type: fronend
+    # Bu satır, Pod’un mydemo2-service adlı uygulama grubuna ait olduğunu ifade eden uygulama etiketidir. 🛎️
+    app: mydemo2-service
+    # Bu satır, ikinci Pod’un mydemo2 adlı projeye bağlı olduğunu belirten proje etiketidir. 📂
+    project-name: mydemo2
+# Bu blok, ikinci Pod içinde çalışacak container tanımlarını barındıran ana bölümdür. 🧱
+spec:
+  # Bu liste, ikinci Pod’a ait tüm container’ların tek tek tanımlandığı yerdir. 📦
+  containers:
+    # Bu blok, my-new-pod2 adlı tekil container’ın özelliklerini tanımlar. 🧊
+    - name: my-new-pod2
+      # Bu satır, container’ın kullanacağı Docker imajının adını ve sürüm etiketini (tag) belirtir. 🐳
+      image: huseyin11/devops-001-hello:v001
+      # Bu blok, container’a atanacak CPU ve bellek limitleri için kaynak yapılandırmasını içerir. 📊
+      resources:
+        # Bu blok, container’ın aşamayacağı maksimum kaynak kullanım limitlerini tanımlar. 🚦
+        limits:
+          # Bu satır, ikinci Pod’daki container’ın hafıza kullanımını 128Mi ile sınırlandırır. 💾
+          memory: "128Mi"
+          # Bu satır, container’ın CPU kullanımını 500 milicpu olarak üst sınırlandırır. 🧠
+          cpu: "500m"
+      # Bu blok, container’ın dışardan hangi port üzerinden dinleme yapacağını belirler. 🌐
+      ports:
+        # Bu satır, ikinci container’ın 9091 numaralı port üzerinden istekleri kabul edeceğini belirtir. 📡
+        - containerPort: 9091
+```
+
+---
+
+💠 1. devops-001-hello Pod’u – Backend Tarafını Temsil Eden Temel Birim
+#### 🔍 Nedir, Ne Değildir?
+
+devops-001-hello Pod’u, Kubernetes’te hello-service adını verdiğim backend uygulamamı tek bir container içinde koşturan, etiketleriyle birlikte belirli bir projeye (mydemo) ve belirli bir role (backend) bağlı olduğunu açıkça belli eden, sade ama mimari açıdan anlamlı bir çalışma birimidir.
+
+Bu Pod’u, bir “sunucu” gibi değil, kolayca öldürüp yeniden üretebileceğim geçici bir çalışma hücresi olarak görüyorum; kalıcı olan kodum, image’im ve manifest’im iken, Pod’un kendisi aslında sadece o anki koşan instance’tan ibarettir. ⚙️
+
+#### 🎯 Amacı, Kullanım Nedeni ve Kullanılmasa Ne Olur?
+
+Bu Pod’un temel amacı, huseyin11/devops-001-hello Docker imajını, Kubernetes çatısı altında kontrollü CPU/RAM limitleriyle çalıştırmak ve backend servisini iç ağda 9090 portundan ulaşılabilir hâle getirmektir; bu sayede aynı imajı farklı ortamlarda aynı davranışla kullanabiliyorum.
+
+Eğer böyle bir Pod tanımıyla çalışmasam, uygulamayı ya çıplak bir sunucuda ya da kontrolsüz bir container içinde koşturmak zorunda kalır, ne kaynak tüketimini sınırlandırabilir ne de Kubernetes’in self-healing ve orkestrasyon yeteneklerinden faydalanabilirdim. 🚀
+
+#### 🧩 Özellikleri, Avantajları ve Dezavantajları
+
+Özellik: Label seti (type=backend, app=hello-service, project-name=mydemo) sayesinde bu Pod, ileride tanımlayacağım Service ve Deployment gibi kaynaklar tarafından çok rahat seçilebilir ve backend grubunun bir üyesi olarak görülebilir.
+
+Avantaj: CPU (500m) ve bellek (128Mi) limitleri, bu Pod’un cluster kaynaklarını hunharca tüketmesini engelleyerek, diğer Pod’ların da nefes alabileceği adil bir kaynak paylaşımı sağlar. 📊
+
+Dezavantaj: Tek Pod tanımı, tek başına ölçeklendirme ve yüksek erişilebilirlik sağlamaz; yani bu haliyle sadece “tek instance” bir backend süreç gibi çalışır ve gerçek üretim yüklerinde mutlaka Deployment ile çoğaltılması gerekir. ⚠️
+
+💠 2. my-new-pod2 Pod’u – Farklı Uygulama/Arayüz İçin Ayrı Bir Çalışma Hücresi
+#### 🔍 Nedir, Ne Değildir?
+
+my-new-pod2 Pod’u, ikinci bir uygulama veya arayüzü temsil etmesi için tanımladığım, etiketi type=fronend (bilerek yazım hatası korunmuş) olan ve mydemo2-service uygulamasına ait olduğunu gösteren, ayrı proje ve ayrı rol altında çalışan bağımsız bir çalışma birimidir. 🎨
+
+Bu Pod, ilk Pod’un kopyası değildir; project-name=mydemo2, farklı app etiketi ve farklı port (9091) kullanarak, mimaride aslında başka bir uygulama ya da başka bir servis olarak konumlanır ve bu ayrım ileride mikroservis mimarisine geçerken benim işimi ciddi anlamda kolaylaştırır.
+
+#### 🎯 Amacı, Kullanım Nedeni ve Kullanılmasa Ne Olur?
+
+Bu Pod’un amacı, huseyin11/devops-001-hello:v001 image’i üzerinden farklı bir versiyon veya farklı bir rol (örneğin frontend ya da farklı endpoint’ler) çalıştırmak ve bunu ilk Pod’dan bağımsız bir proje alanına (mydemo2) bağlayarak yönetilebilir hâle getirmektir.
+
+Bu tarz ikinci bir Pod tanımlamazsam, tüm denemelerimi, farklı sürümlerimi ve farklı rollerimi tek bir Pod veya tek bir proje etiketi içinde boğar, hem log okumayı hem hata ayıklamayı hem de Service/Ingress tanımlarını gereksiz yere karmaşıklaştırmış olurdum. 🧠
+
+#### 🧩 Özellikleri, Avantajları ve Dezavantajları
+
+Özellik: Farklı app ve project-name etiketleri, bu Pod’u bambaşka bir servis grubu ve proje altında konumlandırarak, ileride app=mydemo2-service seçici (selector) kullanan bir Service ile kolayca eşleştirmeme imkân tanır.
+
+Avantaj: Aynı image’in v001 tag’ini kullanarak, versiyon kavramını Pod düzeyinde düşünmeyi öğreniyor ve container image versiyonlamasını canlı sistemle ilişkilendiriyorum; bu da CI/CD akışına kafa yorarken bana büyük avantaj sağlıyor. 🔁
+
+Dezavantaj: Yine tek başına bir Pod olduğu için, ölçeklendirme ve high availability bu seviyede yok; gerçek dünyada bunu da Deployment ile çoğaltmak ve üzerinde Service tanımlamak zorunda kalacağımı bilerek ilerliyorum.
+
+🔗 3. İki Pod’un Bir Arada Mimari Olarak Ne İfade Ettiği
+#### 🧬 Mimari Bakış: Aynı Cluster’da İki Ayrı Uygulama Hücresi
+
+Bu ayar dosyasında aslında aynı cluster ve aynı namespace içinde, iki farklı uygulama/proje için iki ayrı Pod hücresi oluşturuyor ve bunları etiketlerle net şekilde ayırarak, daha sonra Service, Deployment, Ingress gibi üst katmanları tanımlarken çok daha rahat yönetilebilecek bir zemin hazırlıyorum.
+
+Backend’i temsil eden devops-001-hello ile, farklı bir proje ya da arayüzü temsil eden my-new-pod2 Pod’unu yan yana duracak şekilde tanımlayarak, Kubernetes dünyasında “her uygulama için ayrı Pod setleri, ayrı label’lar, ayrı portlar” yaklaşımını kendime refleks hâline getiriyorum. 💪
+
+#### 📊 Küçük Bir Özet Tablosu
+| Pod Adı            | Rol / Tip          | Proje     | Port   | Image                             | Ne Kazandırıyor?                                                                                                         |
+| ------------------ | ------------------ | --------- | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `devops-001-hello` | `backend`          | `mydemo`  | `9090` | `huseyin11/devops-001-hello`      | Backend mantığını tek bir Pod’da deneyimleyip, label mantığını backend ekseninde oturtmamı sağlıyor.                     |
+| `my-new-pod2`      | `fronend` (etiket) | `mydemo2` | `9091` | `huseyin11/devops-001-hello:v001` | Farklı proje, farklı rol ve farklı versiyon kavramını tek dosya içinde görüp, çoklu servis düşünme pratiği kazandırıyor. |
