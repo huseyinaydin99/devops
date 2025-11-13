@@ -492,3 +492,465 @@ volumes:
 >Birlikte çalıştıklarında, sistemler arasındaki kaos yerini sessiz bir uyuma bırakır. 🔄
 >Her mesaj doğru zamanda, doğru adrese, doğru formatta ulaşır.
 >Yani “bağlantısız ama uyumlu” sistemler dünyasının en sessiz ama en etkili altyapısıdır. 🧠💬
+
+---
+
+---
+
+### ❤🚀 Kubernetes Notlarım
+
+Kendi projelerimde yaşayarak öğrendiğim çekirdek kavramlar ve mimari bakış açım
+
+---
+
+### ❤1️⃣ Çekirdek Bileşenler & Mimari
+
+#### ❤1.1 🧠 Control Plane (Master) ve ⚙️ Worker Node’lar
+
+Kubernetes mimarisini kafamda oturturken, Control Plane’i karar veren beyin, Worker Node’ları ise bu kararları icra eden kas gücü gibi düşünmeye başladığım anda her şey çok daha anlamlı hâle geliyor.
+
+Control Plane (API Server, Scheduler, Controller Manager, etcd), cluster içindeki tüm kaynakların durumunu takip eden, hangi Pod’un hangi node’da çalışacağını planlayan, istenen durum ile mevcut durumu sürekli karşılaştıran ve gerektiğinde düzeltici aksiyon alan merkezi zekâ katmanıdır; bu katman olmadan Kubernetes sadece birbirinden habersiz makinelerden oluşan sıradan bir sunucu grubu olurdu. 🧠
+
+Worker Node’lar, container’ların (dolayısıyla Pod’ların) gerçekten çalıştığı fiziksel veya sanal makineler olup, Control Plane’den gelen emirleri yerine getirerek uygulamaları ayağa kaldıran, network trafiğini taşıyan ve depolama erişimini sağlayan icra katmanıdır; bu node’lar olmadığı zaman teorik olarak bir cluster tanımı kâğıt üzerinde var olsa bile fiilen hiçbir iş yapan canlı bir sistemimiz olmaz. ⚙️
+
+#### ❤1.2 🧱 Pod’lar
+
+Pod’ları, bir uygulama bileşenini çalıştırmak için Kubernetes’in verdiği en küçük, en saf çalışma birimi olarak görüyorum; tek ya da birbirine çok yakın bağları olan birkaç container’ı aynı network ve depolama bağlamında bir araya getirip tek bir mantıksal paket hâline getiriyorlar.
+
+Pod, container’ların tek başına Kubernetes tarafından doğrudan yönetilemediği bir dünyada, bu container’ları ortak IP, port alanı ve volume paylaşımı ile birlikte yaşamaya zorlayan temel sarma birimidir; Pod olmadan Kubernetes scheduler’ı container’ları nereye ve nasıl yerleştireceğini bilemez ve bütün orkestrasyon mantığı çöker. 🧩
+
+Pod’ların kısa ömürlü (ephemeral) olması, onların birer sunucu gibi değil, her an öldürülüp yeniden yaratılabilecek, versiyonlanabilir ve kolayca çoğaltılabilir birer çalıştırma birimi olduğunu hatırlatır; bunu kavradıktan sonra asıl kalıcı olanın “durum” ve “tanım” (Deployment, YAML, PV vs.) olduğunu, çalıştırma ortamının ise her zaman yeniden üretilen tüketilebilir bir parça olduğunu görüyorum. 🔁
+
+#### ❤1.3 ⚙️ İki Farklı Pod Yapılandırması
+
+Kendi kafamda kurguladığım iki farklı Pod senaryosunu yan yana düşünüp, aralarındaki farkları ve hangi durumda hangisini tercih ettiğimi netleştiriyorum.
+
+#### ❤1.3.1 🧩 Pod #1 – Basit “Hello” Servisi
+
+```yaml
+# Kubernetes'in bu dosyayı hangi API sürümüyle yorumlayacağını belirtir. 📘
+apiVersion: v1
+
+# Oluşturulan kaynağın bir Pod olduğunu ifade eder. 📦
+kind: Pod
+
+metadata:
+  # Pod'un adını belirler; kümede benzersiz olması gerekir. 🏷️
+  name: devops-001-hello
+  labels:
+    # Pod’a etiket ekleyerek onu gruplayıp kolayca bulmamızı sağlar. 🧩
+    name: devops-001-hello
+    # Bu Pod’un backend tarafında çalışan bir bileşen olduğunu belirtir. ⚙️
+    type: backend
+    # Bu Pod’un hello-service uygulamasına ait olduğunu gösterir. 🔔
+    app: hello-service
+    # Bu Pod’un hangi projeye ait olduğunu işaret eder. 📂
+    project-name: mydemo
+
+spec:
+  containers:
+    - name: devops-001-hello
+      # Pod içinde çalışacak Docker imajını tanımlar. 🐳
+      image: huseyin11/devops-001-hello
+      resources:
+        limits:
+          # Pod'un kullanabileceği en fazla bellek miktarını sınırlar. 💾
+          memory: "128Mi"
+          # Pod'un kullanabileceği CPU gücünü sınırlar. 🧠
+          cpu: "500m"
+      ports:
+        - containerPort: 9090
+          # Container’ın dinlediği port numarasını belirtir. 🌐
+```
+
+Bu ilk Pod konfigürasyonunda, aslında tek container’lı, hafif bir backend servisini ayağa kaldırmak için gerekli olan minimum ama anlamlı alanların hepsini toplayıp net bir yapı kurmuş oluyorum.
+
+İmajı (image) ve port’u net tanımlayarak, Kubernetes’in bu container’ı hangi Docker imajından ayağa kaldıracağını ve cluster içi servislerin bu Pod’a hangi port üzerinden ulaşacağını belirlemiş oluyorum; bu sayede “çalışıyor ama nereden dinliyor” sorusu daha baştan çözülüyor. 🌐
+
+Resources limits ile bellek ve CPU sınırlarını belirleyerek, hem cluster’ın toplam kaynaklarının tek bir Pod tarafından tüketilip sistemi kilitlemesini engelliyor hem de ileride autoscaling gibi mekanizmaları devreye alırken daha öngörülebilir bir kaynak kullanım modeli yakalamış oluyorum. 📊
+
+Labels kısmında `type=backend`, `app=hello-service` gibi etiketler kullanarak, bu Pod’u hem insan gözüyle hem de Service ve Deployment gibi Kubernetes nesneleri tarafından kolayca seçilebilir, filtrelenebilir ve gruplanabilir hâle getiriyor; böylece hem mantıksal ayrımı hem de operasyonel görünürlüğü artırıyorum. 🧭
+
+#### ❤1.3.2 🧩 Pod #2 – Problu, Env’li, Biraz Daha “Production’a Yakın” Tasarım
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: devops-002-advanced
+  labels:
+    app: hello-service
+    tier: backend
+    environment: production
+spec:
+  containers:
+    - name: devops-002-advanced
+      image: huseyin11/devops-001-hello
+      env:
+        - name: APP_ENV
+          value: "prod"
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "64Mi"
+        limits:
+          cpu: "800m"
+          memory: "256Mi"
+      livenessProbe:
+        httpGet:
+          path: /actuator/health
+          port: 9090
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /actuator/health
+          port: 9090
+        initialDelaySeconds: 3
+        periodSeconds: 5
+```
+
+Bu ikinci Pod tasarımında, ilkine göre bakışımı biraz daha “gerçek üretim ortamına yakın” bir seviyeye çekip, uygulamanın sağlığını izleyen problar, minimum kaynak talepleri ve ortam bilgisini yöneten environment değişkenleri ekliyorum.
+
+Liveness ve readiness probelarını ekleyerek, Kubernetes’e uygulamanın sadece çalışıyor olup olmadığını değil, gerçekten sağlıklı cevap verip vermediğini ve trafiği kaldırmaya hazır olup olmadığını sorgulatıyor; bozulmuş, kilitlenmiş veya hazırlık aşamasında kalmış container’ların cluster’ın geri kalitesini bozmasını bu şekilde engelliyorum. ❤️‍🩹
+
+Requests alanıyla minimum CPU ve bellek talebi tanımlayarak, scheduler’ın bu Pod’u zayıf bir node’a rastgele koymasını engelliyor, daha dengeli bir yerleşim (scheduling) algoritması ile cluster’ın topyekûn stabil çalışmasını kolaylaştırıyorum. ⚖️
+
+Environment değişkenleri ile ortam tipini (prod, dev, test) dışarıdan ileterek, aynı imajı farklı ortamlarda yeniden build almadan sadece konfigürasyonla oynayarak kullanabiliyor, DevOps tarafında tekrar eden, manuel ve riskli müdahaleleri azaltıyorum. 🎛️
+
+#### ❤1.4 🏗️ Deployment’lar
+
+Deployment, Kubernetes’te benim gözümde “Pod tarifinin versiyonlanabilir, ölçeklenebilir ve kendini iyileştirebilir hâli” gibi; yani yalnızca tek bir Pod’u değil, o Pod’un arkasındaki niyeti ve istenen durumu temsil eden üst seviye controller.
+
+Deployment kullanarak, “bu Pod’dan her zaman en az X adet çalışsın” diye bir söz veriyor ve Kubernetes’ten bu sözü tutmasını talep ediyorum; Pod çökerse yeniden yaratılıyor, node kaybolursa başka node’da ayağa kalkıyor ve sonuçta sistem manuel restart işlerinden beni kurtarıyor. ⚙️
+
+Rolling update özelliği sayesinde, yeni versiyonları canlı sisteme aktarırken tüm trafiği aniden kesmek yerine yavaş yavaş, kontrollü ve geri alınabilir bir şekilde dağıtabiliyor, böylece hem downtime riskini azaltıyor hem de hatalı deploy durumunda hızlı rollback ile güvenli bir emniyet supabı oluşturuyorum. 🔄
+
+Kısa bir örnek:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-hello-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-service
+  template:
+    metadata:
+      labels:
+        app: hello-service
+    spec:
+      containers:
+        - name: devops-001-hello
+          image: huseyin11/devops-001-hello
+          ports:
+            - containerPort: 9090
+```
+
+#### ❤1.5 🌐 Servisler (Services)
+
+Service, Pod’ların değişken IP adreslerini ve ömürlerini soyutlayan, dış dünya ile uygulamam arasında stabil bir köprü kuran, load balancing işini üstlenen ağ katmanı nesnesi gibi çalışıyor ve ben Kubernetes kullanırken neredeyse her ciddi senaryoda bir Service tanımıyla karşılaşıyorum.
+
+Service kullanmadığım bir senaryoda, her Pod’un IP’sini tek tek bulmak, Pod her öldüğünde yeni IP’ye göre konfigürasyonları manuel güncellemek ve trafiği elle paylaştırmak zorunda kalırım ki bu modern bir mimaride tam anlamıyla sürdürülemez ve yönetilemez bir kaos demektir. 🌪️
+
+Service, selector’lar üzerinden etiketlere (labels) bakarak doğru Pod’ları bulur ve gelen trafiği bu Pod’lar arasında dengeli bir şekilde dağıtır; böylece ben tek bir mantıksal adresle (örn: `devops-hello-service`) konuşurken arka tarafta kaç Pod çalıştığını düşünmek zorunda kalmam. ⚓
+
+Örnek:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-hello-service
+spec:
+  type: ClusterIP
+  selector:
+    app: hello-service
+  ports:
+    - port: 80
+      targetPort: 9090
+```
+
+#### ❤1.6 🗂️ Namespace’ler
+
+Namespace kavramını, cluster içindeki kaynakları mantıksal olarak bölüp, çevreler, ekipler veya projeler bazında izole etmenin ve düzenlemenin pratik bir yolu olarak kullanıyorum; özellikle birden fazla ekip aynı cluster’ı paylaştığında namespace adeta hayat kurtarıyor.
+
+Namespace kullanmadığımda, tüm Pod, Service, ConfigMap ve benzeri nesneler aynı düzlemsel isim alanında toplanıyor ve isim çakışmaları, erişim karmaşaları ve yönetimsel dağınıklık kaçınılmaz hâle geliyor; özellikle prod, dev, test gibi ayrımları namespace’e taşımak işleri ciddi anlamda sadeleştiriyor. 🧹
+
+#### ❤1.7 🏷️ Etiketler (Labels) ve Seçiciler (Selectors)
+
+Labels ve selectors, Kubernetes’te hem insan hem de sistem için kullanılan ortak bir sınıflandırma dili gibi; Pod’lara ve diğer nesnelere iliştirdiğim küçük anahtar-değer çiftleri, daha sonra Service, Deployment, NetworkPolicy veya monitoring tarafı için güçlü bir filtreleme mekanizmasına dönüşüyor.
+
+Labels kullanarak, örneğin `environment=prod`, `tier=backend`, `app=hello-service` gibi bilgilerle hem log tarafında hem de `kubectl get pods -l app=hello-service` gibi komutlarla son derece esnek ve anlaşılır sorgular çalıştırabiliyor, işimi kolaylaştırıyorum. 🔍
+
+Selectors ise, bu etiketleri okuyup “ben sadece şu özelliğe sahip Pod’larla konuşmak istiyorum” diyen taraf; yani Service bir selector ile kendine karşılık gelen Pod’ları buluyor, Deployment ise yine selector ile yönetmesi gereken Pod setini belirliyor ve bu ilişki zinciri Kubernetes mimarisinin esnekliğini ciddi şekilde artırıyor. 🧠
+
+Label, Kubernetes’te bir objeye (Pod, Service, Deployment vs.) yapıştırdığım anahtar=değer etiketidir; bu etiketler objeyi “environment=prod”, “app=hello-service”, “tier=backend” gibi anlamlı gruplara ayırmamı ve hem insan hem sistem tarafından bulunabilir olmasını sağlar. 🎯
+Selector ise, “şu label’a sahip olan objeleri bana getir” diyen sorgu tarafıdır; Service, Deployment, NetworkPolicy gibi yapılar selector kullanarak doğru label setine sahip Pod’ları hedef alır ve böylece doğru gruba doğru davranışı uygular. 🧠
+
+environment=prod, app=hello-service, tier=backend aslında Pod’un üstüne yapıştırdığın isimli etiketler (etiketin adı = environment, app, tier; değeri = prod, hello-service, backend) ve Kubernetes bu etiketlere bakarak “hangi ortam”, “hangi uygulama”, “mimari olarak hangi katman” sorularının cevabını anlıyor, sonra da mesela selector kullanarak “app=hello-service olan tüm Pod’lara trafik gönder” gibi akıllı seçimler yapabiliyor. 🎯
+
+---
+
+#### ❤1.7.1 🧬 Kubernetes Ekosistemi, Katman Haritası ve Mimarisi: Cluster’dan Container’a Katmanlı Yolculuk
+
+```text
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🛰️  KUBERNETES CLUSTER                                               ┃
+┃ Tüm node’ların, namespace’lerin, ağ katmanının, depolama soyutlarının┃
+┃ ve kontrol düzlemi bileşenlerinin tek bir mantıksal bütün olarak     ┃
+┃ yönetildiği, sistemin hem beyni hem de sinir ağı gibi işleyen çatı   ┃
+┃ orkestrasyon katmanıdır; her şey bu kabuğun içinde anlam kazanır.    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│
+┌─────────────────┴─────────────────┐
+▼                                   ▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🗂️  NAMESPACE: mydemo             ┃   ┃ 🗂️  NAMESPACE: monitoring     ┃
+┃ Uygulama ekiplerini, ortamları    ┃   ┃ İzleme, log, metric gibi      ┃
+┃ (dev, test, prod) ve projeleri    ┃   ┃ altyapı servislerini ayrı bir ┃
+┃ mantıksal sınırlar içine alarak   ┃   ┃ isim alanında tutup, prod     ┃
+┃ kaynak kotası ve RBAC kurallarıyla┃   ┃ uygulamalarıyla karışmasını   ┃
+┃ yönettiğim izole çalışma alanıdır.┃   ┃ engelleyen yardımcı alanıdır. ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│
+▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🌍  INGRESS / EXTERNAL LOAD BALANCER (opsiyonel dış kabuk)           ┃
+┃ Dış dünyadan gelen HTTP/HTTPS isteklerini domain ve path bazında     ┃
+┃ tek bir giriş noktasında toplayıp, arkadaki Service'lere akıllıca    ┃
+┃ yönlendiren, DNS ile entegre çalışan, trafiğin ilk karşılama katmanı ┃
+┃ olup, Service’leri dış müşterilere düzgün ve kontrollü açmamı sağlar.┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│
+▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🌉  SERVICE: devops-hello-service                                    ┃ 
+┃ Label selector kullanarak belirli bir işi yapan Pod grubunu tek bir  ┃
+┃ sanal IP ve mantıksal ad altında toplayan, gelen trafiği arkadaki    ┃
+┃ instance’lar arasında dengeli dağıtan ve Pod IP’lerindeki değişimi   ┃
+┃ dış dünyadan tamamen gizleyen, ağ soyutlama katmanının merkezidir.   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│ (selector: app=hello-service, type=backend)
+▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🏗️  DEPLOYMENT: devops-hello-deployment                              ┃
+┃ Hangi container image’inden, hangi konfigürasyonla, aynı anda en az  ┃
+┃ kaç adet Pod kopyasının çalışacağını tanımlayan; versiyon geçişlerini┃
+┃ rolling update ile yöneten ve çökme durumunda Pod’ları otomatik      ┃
+┃ yeniden ayağa kaldırarak uygulamanın hedeflenen duruma sadık kalmasını┃
+┃ sağlayan, Pod yaşam döngüsünün asıl yöneticisidir.                   ┃
+┃ Deployment, aslında aynı şablondan (aynı image, aynı config, aynı    ┃
+┃ label’lar) üretilmiş, bire bir kopya olan Pod’ların bir grubunu      ┃
+┃ yöneten ve bu grubun sayısını, versiyonunu ve hayatta kalma durumunu ┃
+┃ otomatik olarak kontrol eden üst seviye kontrol mekanizmasıdır.💼🧱 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│
+▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ♻️  REPLICASET (Deployment'ın gölgedeki kolu)                        ┃
+┃ Aynı şablona ve aynı label setine sahip Pod kopyalarının sayısını    ┃
+┃ istenen replika sayısıyla sürekli karşılaştırıp, eksikse yeni Pod    ┃
+┃ üreten, fazlaysa Pod kapatan ve ölçeklendirme kararlarını fiilen     ┃
+┃ uygulayan, Deployment'ın arka plandaki sayıcı ve dengeleyici         ┃
+┃ mekanizmasıdır; çoğu zaman adını bile görmem ama hep çalışır.        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│
+┌─────────┴───────────────────────────────┐
+▼                                         ▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓      ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🧱 POD #1: devops-001-hello   ┃      ┃ 🧱 POD #2: devops-001-hello ┃
+┃ Kendi IP adresi, kendi port   ┃      ┃ Aynı Deployment’tan doğan,  ┃
+┃ alanı, kendi process alanı ve ┃      ┃ aynı işi paralel yapan, yük ┃
+┃ volume bağlamı olan, bir veya ┃      ┃ altında sistemi ayakta tutan┃
+┃ birkaç container'ı birlikte   ┃      ┃ kardeş çalışma birimidir.   ┃
+┃ barındıran en küçük çalışma   ┃      ┃ Her biri bağımsız ölür ve   ┃
+┃ birimidir; ölmesi olağan,     ┃      ┃ yeniden doğar, kalıcı olan  ┃
+┃ yeniden üretilmesi beklenen   ┃      ┃ aslında şablondur.          ┃
+┃ tüketilebilir hücre gibidir.  ┃      ┃                             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛      ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│                                     │
+▼                                     ▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓      ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📦 CONTAINER (Pod içindeki)   ┃      ┃ 📦 CONTAINER (Pod içindeki)  ┃
+┃ Tek bir proses modeli etrafında┃     ┃ Aynı image’den doğsa bile,   ┃
+┃ çalışan, dosya sistemi, ağ ve  ┃     ┃ runtime düzeyinde tamamen    ┃
+┃ proses izolasyonu sağlayan     ┃     ┃ izole bir çalışma ortamıdır; ┃
+┃ runtime ortamıdır; her biri    ┃     ┃ Pod içinde aynı IP’yi        ┃
+┃ bir Docker image'inden ayağa   ┃     ┃ paylaşır ama process sınırlarını┃
+┃ kalkar ve CPU/RAM limitleriyle ┃     ┃ korur; uygulamanın her kopyası┃
+┃ cluster kaynaklarını kontrollü ┃     ┃ burada gerçek anlamda “yaşar”.┃
+┃ tüketir.                       ┃     ┃                              ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ┛     ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+└─────────────────────┬─────────────────────────────────────┘
+▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🖼️  IMAGE (DERLENMİŞ BUILD + DEPENDENCIES)                          ┃
+┃ CI/CD pipeline'ımın çıktısı olan, uygulama kodunun derlenmiş hâlini,┃
+┃ bağımlılıklarını ve runtime ortamını tek bir paket içinde toplayan,  ┃
+┃ container’ların birebir kopya halinde çoğalmasını sağlayan sabit    ┃
+┃ şablondur; registry’de saklanır ve her yeni container bu kalıptan    ┃
+┃ üretilir, böylece “bende çalışıyor ama sende çalışmıyor” devri biter.┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+│
+▼
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 💻 SOURCE CODE + BUILD PIPELINE                                     ┃
+┃ Geliştirici olarak yazdığım gerçek kaynak kodu, testler, konfigürasyon┃
+┃ dosyaları ve bunların Maven/Gradle gibi araçlarla derlenip paketlendiği┃
+┃ build aşamaları; burası hem iş mantığının hem de teknik kalitenin    ┃
+┃ doğduğu yerdir ve yukarıdaki tüm katmanlar aslında bu kodun doğru,   ┃
+┃ güvenli ve ölçeklenebilir şekilde koşmasını sağlamak için var olur.  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+---
+
+### ❤2️⃣ Uygulama Yaşam Döngüsü
+
+#### ❤2.1 ♻️ ReplicaSet & Ölçeklendirme (Scaling)
+
+ReplicaSet, belli bir label setine sahip Pod’ların sayısını sabit tutmakla görevli, Deployment’ın da temelinde çalışan bir controller türü olup, ölçeklendirme yaptığımda aslında perde arkasında ReplicaSet’in yeni Pod’lar üretmesini veya fazlalıkları kapatmasını sağlayan ana mekanizmadır; bu yapı olmazsa ölçekleme tamamen manuel Pod yaratma/kapatma işine dönüşür. 📈
+
+#### ❤2.2 🧬 StatefulSet’ler (Durum Bilgisi Olan Uygulamalar)
+
+StatefulSet, her Pod’un kimliğinin (hostname, sıralama, storage eşleşmesi) önemli olduğu, veritabanı gibi durum bilgisi taşıyan uygulamalar için tasarlanmış bir controller’dır; eğer böyle bir senaryoda sıradan Deployment kullanırsam Pod isimleri ve bağlı diskler kayar, cluster’da veri tutarlılığı ve replikasyon mantığı bozulur, bu yüzden StatefulSet ile her Pod’a yapışık bir “kişilik” kazandırmak hayati önem taşır. 🧱
+
+#### ❤2.3 🛰️ DaemonSet’ler (Her Node’da Bir Pod)
+
+DaemonSet, her node üzerinde belirli bir Pod’un (örneğin log toplayıcı, izleme ajanı veya node-level network bileşeni) mutlaka bir kopyasının çalışmasını garantileyen controller türüdür; DaemonSet kullanmadığım bir cluster’da merkezi izleme ve loglama gibi altyapısal işlevleri her node’a eşit yaymam mümkün olmaz ve bazı node’lar sistem dışında kalır. 🛰️
+
+#### ❤2.4 ⏱️ Job & CronJob (Zamanlanmış ve Batch İşler)
+
+Job, bir işi belirli sayıda tamamlamak üzere çalışan, iş bitince Pod’u sonlandıran ve tekrarlanabilir batch görevleri için kullanılan bir yapı olup, sonsuza kadar açık kalması gerekmeyen, örneğin rapor üretimi veya belli bir batch işlem gibi süreçleri Kubernetes mantığıyla yönetmeme yardımcı olur. 📄
+
+CronJob, Job’un zamanlanmış hâli gibi düşünülebilir; cron formatında verdiğim zamanlama ile belirli aralıklarla yeni Job’lar türeten bir üst controller’dır ve klasik cron sistemlerinde yaşanabilen log kaybı, yeniden başlatmada kaybolma vb. dertleri Kubernetes ekosistemine taşıyarak daha yönetilebilir hale getirir. ⏰
+
+#### ❤2.5 ❤️‍🩹 Canlılık ve Hazırlık Probları (Liveness & Readiness Probes)
+
+Liveness probe, uygulamanın gerçekten canlı olup olmadığını (örn. kilitlenme, sonsuz döngü, cevap vermeme) test eden ve başarısız olduğunda Pod’u restart eden sağlık kontrolü mekanizmasıdır; bu probe’u kullanmadığımda “çalışıyor gözüken ama hiç cevap vermeyen” zombie container’lar sistemde kalabilir ve dışarıdan bakınca problem anlaşılmaz. 🧟‍♂️
+
+Readiness probe, Pod’un trafiği karşılamaya hazır olup olmadığını belirler ve başarısızsa Service bu Pod’a istek yönlendirmez; böylece ayağa kalkmamış, cache’i dolmamış, migration’ı bitmemiş veya downstream bağlantıları hazır olmayan Pod’ların kullanıcı trafiğini bozmasını engellemiş olurum. 🧪
+
+---
+
+### ❤3️⃣ Depolama (Storage)
+
+#### ❤3.1 ⚙️ ConfigMap’ler (Yapılandırma Yönetimi)
+
+ConfigMap, uygulamanın kodu ile konfigürasyonunu birbirinden ayırmamı sağlayan, düz metin tabanlı key-value yapılandırma deposudur; bu sayede aynı container imajını farklı ortamlarda sadece ConfigMap değiştirerek kullanabilir, imaj rebuild etme bağımlılığından kurtulurum. 🗂️
+
+#### ❤3.2 🔒 Secret’lar (Gizli Bilgi Yönetimi)
+
+Secret, şifre, token, sertifika gibi hassas bilgileri ConfigMap’ten bir adım daha güvenli, base64 encode edilmiş ve RBAC ile korunabilen bir yapıda saklamamı sağlar; bu yapı olmazsa sensitive bilgileri plain-text bırakarak ciddi bir güvenlik açığı yaratmış olurum. 🕵️‍♂️
+
+#### ❤3.3 📦 Volume’ler (Geçici Depolama)
+
+Volume, Pod içindeki container’ların ortak bir depolama alanını paylaşmasını sağlayan temel soyutlama olup, container silinse bile Pod yaşadığı sürece verinin devam etmesini, logların veya temp dosyaların kaybolmamasını sağlar; Volume kullanmadan her container restart’ında dosyalar buhar olur. 💨
+
+#### ❤3.4 🧱 Persistent Volumes (PV) & Persistent Volume Claims (PVC)
+
+PV ve PVC, cluster içindeki fiziksel depolama kaynakları ile Pod’ların ihtiyaçlarını birbirinden ayıran iki seviyeli bir modeldir: PV altyapının sunduğu gerçek disk veya depolama birimini temsil ederken, PVC uygulamanın “bana şu kadar depolama lazım” diyerek yaptığı talebi temsil eder; bu yapı olmadan storage yönetimi node bazlı ve el yordamıyla yürütülmek zorunda kalır. 🗃️
+
+#### ❤3.5 🏗️ StorageClass (Dinamik Depolama Sağlama)
+
+StorageClass, farklı depolama türlerini (SSD, HDD, bulut sağlayıcı diskleri vb.) sınıflandırıp, PVC oluşturulduğunda dinamik olarak yeni diskler üreten bir ara katman sağlar; böylece her yeni depolama talebinde manuel disk oluşturmadan, tamamen Kubernetes odaklı bir “storage as a service” modeline geçmiş olurum. ⚡
+
+---
+
+### ❤4️⃣ Ağ (Networking)
+
+#### ❤4.1 🌐 Service Tipleri (ClusterIP, NodePort, LoadBalancer)
+
+ClusterIP, sadece cluster içinden erişilebilen sanal IP sağlayarak microservice’ler arası iletişimi düzenler; dış dünyadan erişim gerekmeyen iç servisler için ideal bir çözümdür.
+
+NodePort, her node üzerinde belirli bir portu açarak dış dünyadan doğrudan node IP’si + port kombinasyonuyla erişim verir; daha basit ama sınırlı, bazen de güvenlik açısından dikkat isteyen bir yöntemdir.
+
+LoadBalancer, bulut sağlayıcıların native load balancer’ı ile entegre olarak dışarıya tek bir IP ve DNS üzerinden ölçeklenebilir erişim sunar; gerçek üretim ortamlarında sık kullanılan, daha profesyonel bir layer’dır. ⚓
+
+#### ❤4.2 🚪 Ingress & Ingress Controller (Harici Erişim)
+
+Ingress, HTTP/HTTPS trafiğini domain, path ve kural bazlı olarak arka plandaki Service’lere yönlendiren üst seviye bir ters proxy/entrypoint tanımıdır; Ingress Controller ise bu kuralları hayata geçirip gerçek trafiği yöneten uygulamadır ve bu ikili kullanılmadığında her servis için ayrı LoadBalancer açmak zorunda kalır, maliyet ve karmaşıklığı artırırım. 🌍
+
+#### ❤4.3 🧬 Container Network Interface (CNI)
+
+CNI, Kubernetes’in ağ eklentilerinin (Calico, Flannel vb.) uyması gereken standart arayüz olup, Pod’lara IP atama, routing ve policy uygulama işlevlerini sağlayan altyapıdır; CNI olmadan cluster’daki Pod’lar birbirlerini bulamaz ve sistem sadece teori düzeyinde bir orkestrasyon çözümü olarak kalır. 📡
+
+#### ❤4.4 🚧 Network Policies (Ağ Güvenlik Kuralları)
+
+NetworkPolicy, hangi Pod’un hangi Pod veya IP aralığıyla hangi portlardan konuşabileceğini tanımlayan, zero-trust network mimarisine doğru atılmış güçlü bir adımdır; bunu kullanmadığımda cluster içi trafik tamamen serbesttir ve tek bir kötü niyetli veya ele geçirilmiş Pod tüm sistemi gezebilir. 🛡️
+
+#### ❤4.5 📛 DNS Servisi
+
+Kubernetes DNS servisi, servis adlarını (örn: `devops-hello-service.default.svc.cluster.local`) IP adreslerine çözüp cluster içi servis keşfini kolaylaştırır; DNS olmadan her şey IP bazlı kalır ve dinamik bir sistemde IP değiştikçe konfigürasyonlar sürekli kırılır. 🧾
+
+---
+
+### ❤5️⃣ Güvenlik (Security)
+
+#### ❤5.1 👮 RBAC (Rol Tabanlı Erişim Kontrolü)
+
+RBAC, hangi kullanıcının veya servisin API üzerinden hangi kaynaklara hangi seviyede (okuma, yazma, listeleme vb.) erişebileceğini belirleyen temel yetkilendirme modelidir; RBAC kullanmadığım bir cluster, pratikte herkese her şeyi yapma izni verilmiş, güvenlik açısından belirsiz bir açık kapı hâline gelir. 🚨
+
+#### ❤5.2 🧾 Service Accounts (Pod Kimlikleri)
+
+ServiceAccount, Pod’ların Kubernetes API’sine veya diğer servislerine kimlikli şekilde erişmesini sağlayan, insan kullanıcılardan ayrı ele alınan hesap türüdür; her Pod için default service account ile idare etmek yerine spesifik haklara sahip ServiceAccount’lar kullanmak, “least privilege” prensibini hayata geçirmeme yardımcı olur. 🪪
+
+#### ❤5.3 🛡️ Security Context (Pod/Container Güvenlik Ayarları)
+
+SecurityContext, bir Pod veya container’ın hangi kullanıcı kimliğiyle (UID/GID), hangi Linux yetkileriyle ve hangi güvenlik kısıtlarıyla çalışacağını belirleyen yapı olup, container’ların root ile koşmasını engelleyerek olası zafiyetlerin etkisini ciddi biçimde sınırlar; bunu kullanmamak, “içeride root olan her şey dışarıya da zıplayabilir” riskini büyütür. ⚔️
+
+#### ❤5.4 🧱 Pod Security Standards (PSS)
+
+PSS, cluster genelinde Pod’ların uyması gereken minimum güvenlik gereksinimlerini (privileged olmama, hostPath kısıtları, root kullanımı vs.) tanımlayan politika setleridir; PSS olmadan her ekip kendi kafasına göre Pod tanımı yapar ve bir noktadan sonra güvenlik seviyesi ekipler arasında vahşi bir çeşitlilik gösterir. 🏰
+
+---
+
+### ❤6️⃣ Bakım, Yönetim & İzleme
+
+#### ❤6.1 📊 Kaynak Yönetimi (Requests & Limits)
+
+Requests ve limits, CPU ve bellek tüketiminde minimum ve maksimum sınırları belirleyerek hem scheduler’ın doğru node seçimini yapmasına hem de her Pod’un cluster kaynaklarını adil şekilde kullanmasına yardımcı olur; bunu kullanmadığım senaryoda bazı Pod’lar açgözlü davranıp diğerlerinin nefesini kesebilir. 💨
+
+#### ❤6.2 📦 Namespace Resource Quotas
+
+ResourceQuota, belirli bir namespace içindeki toplam CPU, bellek, PVC veya Pod sayısını sınırlandırarak özellikle çok kullanıcılı veya çok ekipli cluster’larda kaynakların tek bir ekip tarafından tüketilmesini engeller ve daha kurumsal bir yönetişim modeli sağlar. ⚖️
+
+#### ❤6.3 📦 Helm (Paket Yöneticisi)
+
+Helm, Kubernetes manifest dosyalarını chart adı verilen paketlere dönüştürerek versiyonlanabilir, parametreli ve yeniden kullanılabilir uygulama paketleri üretmemi sağlar; büyük projelerde tek tek YAML dosyalarıyla boğuşmak yerine Helm chart’ları ile daha derli toplu bir DevOps akışı yakalıyorum. 📦
+
+#### ❤6.4 🐞 Hata Ayıklama (Debugging) & Logging
+
+`kubectl logs`, `kubectl exec` ve `kubectl describe` gibi komutlarla, Pod’ların içini ve olay geçmişini izleyip debugging yaparken, merkezi bir log sistemiyle (örn. EFK/ELK) tüm logları tek yerde toplayarak “hangi Pod ne yaptı, ne zaman yaptı” sorularına yanıt bulmayı kolaylaştırıyorum; aksini yaptığımda loglar Pod ile birlikte yok olur ve geçmişe dair izler kaybolur. 🕵️‍♂️
+
+#### ❤6.5 📈 İzleme (Monitoring) ve Kubernetes Metrikleri
+
+Prometheus, Grafana ve benzeri araçlarla, Kubernetes metriklerini (CPU, memory, Pod sayısı, restart sayıları, request süreleri vb.) toplayıp görselleştiriyor ve sistemdeki anomalileri fark ederek problem büyümeden müdahale etme şansı yakalıyorum; izleme olmadan çalışan bir cluster, karanlıkta giden bir araç gibi, ancak duvara çarpınca durumu fark ettirir. 🚗💥
+
+---
+
+### ❤7️⃣ Ekosistem & Araçlar
+
+#### ❤7.1 🧰 kubectl (Komut Satırı Aracı)
+
+`kubectl`, Kubernetes ile konuşurken en çok elimi kullandığım, adeta cluster’ın kumandasını elime veren komut satırı aracıdır; resource yaratmaktan silmeye, log okumaktan port-forward yapmaya kadar hemen her işlemi buradan yürütürüm ve bu araca hâkim olmadan Kubernetes’te gerçekten rahat edemem. 🎛️
+
+#### ❤7.2 🖥️ Dashboard (Web Arayüzü)
+
+Kubernetes Dashboard, cluster kaynaklarını web üzerinden görsel olarak izleyip temel operasyonları tıklayarak yapabileceğim, özellikle yeni başlayanlar veya hızlı gözlem yapmak isteyenler için faydalı bir arayüzdür; ama üretim ortamında genellikle RBAC ve güvenlik açısından dikkatli kullanılmalıdır. 🧿
+
+#### ❤7.3 🤖 Operators (Operatör Deseni)
+
+Operator deseni, Kubernetes API’sini kullanarak belirli uygulamaların (örneğin veritabanları) karmaşık yaşam döngülerini otomatik yöneten özel controller’lar geliştirme yaklaşımıdır; Operator kullanmadığım senaryolarda database scaling, backup, restore gibi kritik işleri hâlâ manuel script’lerle taşımak zorunda kalırım. 🧠
+
+#### ❤7.4 🔁 CI/CD Pipeline Entegrasyonu
+
+CI/CD entegrasyonu, kod push edildiği anda test, build, container imaj üretimi ve Kubernetes’e deploy adımlarını otomatikleştiren bir teslim sürecidir; bunu oturtunca “elle deploy” işini tarihe gömüp, daha güvenilir ve izlenebilir bir teslim akışı elde etmiş oluyorum. 🚀
+
+#### ❤7.5 🌱 GitOps (ArgoCD, Flux)
+
+GitOps, Kubernetes manifest’lerini Git deposunda tek gerçek kaynak (single source of truth) kabul edip, ArgoCD veya Flux gibi araçlarla cluster durumunu bu Git repo ile senkron tutan bir yaklaşımdır; bu sayede konfigürasyon değişiklikleri commit’lenir, review edilir ve gerektiğinde geçmiş commit’lere dönülerek infrastructure as code mantığıyla yönetilir. 🧾

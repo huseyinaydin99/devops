@@ -1,0 +1,32 @@
+# Kubernetes'in bu dosyayı hangi API sürümüyle yorumlayacağını belirtir. 📘
+apiVersion: v1
+
+# Oluşturulan kaynağın bir Pod olduğunu ifade eder. 📦
+kind: Pod
+
+metadata:
+  # Pod'un adını belirler; kümede benzersiz olması gerekir. 🏷️
+  name: devops-001-hello
+  labels:
+    # Pod’a etiket ekleyerek onu gruplayıp kolayca bulmamızı sağlar. 🧩
+    name: devops-001-hello
+    # Bu Pod’un backend tarafında çalışan bir bileşen olduğunu belirtir. ⚙️
+    type: backend
+    # Bu Pod’un hello-service uygulamasına ait olduğunu gösterir. 🔔
+    app: hello-service
+    # Bu Pod’un hangi projeye ait olduğunu işaret eder. 📂
+    project-name: mydemo
+spec:
+  containers:
+    - name: devops-001-hello
+      # Pod içinde çalışacak Docker imajını tanımlar. 🐳
+      image: huseyin11/devops-001-hello
+      resources:
+        limits:
+          # Pod'un kullanabileceği en fazla bellek miktarını sınırlar. 💾
+          memory: "128Mi"
+          # Pod'un kullanabileceği CPU gücünü sınırlar. 🧠
+          cpu: "500m"
+      ports:
+        - containerPort: 9090
+          # Container’ın dinlediği port numarasını belirtir. 🌐
