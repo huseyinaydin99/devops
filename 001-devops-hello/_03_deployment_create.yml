@@ -1,0 +1,46 @@
+# Bu Deployment manifestinin hangi API sürümüyle işlendiğini belirtir. 📘
+apiVersion: apps/v1
+# Bu kaynağın türünün, Pod grubunu yöneten bir Deployment olduğunu söyler. 🏗️
+kind: Deployment
+# Deployment’a ait isim ve etiket gibi tanımlayıcı bilgileri taşır. 🏷️
+metadata:
+  # Deployment’ın cluster içindeki benzersiz adını belirler. 🧾
+  name: devops-001-hello
+# Deployment’ın kaç Pod oluşturacağını ve nasıl yöneteceğini tarif eden ana bloktur. ⚙️
+spec:
+  # Aynı şablondan aynı anda çalışacak Pod kopyası sayısını 5 olarak ayarlar. 📈
+  replicas: 5
+  # Bu Deployment’ın hangi Pod’ları sahiplenip yöneteceğini tanımlayan seçim kriterlerini içerir. 🎯
+  selector:
+    # Pod seçiminde label eşleşmesine göre filtreleme yapılacağını belirtir. 🧩
+    matchLabels:
+      # app değeri devops-001-hello olan tüm Pod’lar bu Deployment’ın parçası sayılır. 🔗
+      app: devops-001-hello
+  # Oluşturulacak Pod’ların şablonunu, yani “nasıl bir Pod üretileceğini” tarif eder. 🧱
+  template:
+    # Pod şablonuna ait isim/etiket gibi meta bilgileri içerir. 🏷️
+    metadata:
+      # Pod’lara iliştirilecek label setini tanımlar. 🧩
+      labels:
+        # Pod’ların app label’ını Deployment ile hizalayarak Service ve selector’larla uyum sağlar. 🎛️
+        app: devops-001-hello
+    # Pod içinde çalışacak container’ların ve diğer özelliklerin tanımlandığı kısımdır. 📦
+    spec:
+      # Bu Pod’da bulunacak container listesini belirtir. 📋
+      containers:
+        # Pod içindeki ilk (ve burada tek) container tanımıdır. 🧊
+        - name: devops-001-hello
+          # Container’ın hangi Docker imajından üretileceğini, versiyon etiketiyle birlikte belirtir. 🐳
+          image: huseyin11/devops-001-hello:v001
+          # Container’ın CPU ve bellek tüketimine dair kaynak yönetimi ayarlarını içerir. 📊
+          resources:
+            # Bu container’ın aşamayacağı maksimum kaynak sınırlarını tanımlar. 🚦
+            limits:
+              # Container’ın RAM kullanımını en fazla 128Mi olacak şekilde sınırlar. 💾
+              memory: "128Mi"
+              # Container’ın CPU kullanımını 500 milicpu ile sınırlayarak diğer Pod’ları korur. 🧠
+              cpu: "500m"
+          # Container’ın dış dünyaya veya cluster içi trafiğe hangi portu açacağını belirtir. 🌐
+          ports:
+            # Uygulamanın içinde 9090 portundan dinlediğini ve trafiği buradan kabul edeceğini söyler. 📡
+            - containerPort: 9090
