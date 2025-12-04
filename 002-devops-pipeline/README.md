@@ -267,3 +267,9 @@ Ajan üzerinde biriken kullanılmayan Docker imajları, disk alanı yönetimi am
 ---
 
 Bu pipeline, derlemeden dağıtıma uzanan eksiksiz bir CI/CD hattı sunar; her adım kontrollü, güvenli ve tutarlı olacak şekilde tasarlanmıştır.
+
+---
+
+### 🔧 Kubernetes-CD Eklentisi Üzerine Notlarım ✨☸️🚀
+
+Kubernetes-CD eklentisi, deployment süreçlerinde Jenkins’in yeteneklerini genişleten hafif ama etkili bir mekanizma sunuyor. CI/CD akışında Kubernetes’e geçiş yapan her adımı daha kontrollü, daha izlenebilir ve daha otomatik hâle getirirken; pipeline içindeki YAML uygulamalarını tek bir hareketle yöneten sade ama güçlü bir köprü görevi görüyor. Bu eklenti projeye eklendiğinde, build’ten sonra başlayan tüm yaşam döngüsünü Kubernetes ile zahmetsizce buluşturan sessiz bir orkestratör gibi çalışıyor. 🔐🔄⚙️
