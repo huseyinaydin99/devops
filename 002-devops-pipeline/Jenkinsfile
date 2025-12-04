@@ -1,0 +1,113 @@
+// 🧭 Pipeline bloğu — tüm CI/CD akışını kapsar
+pipeline {
+    // 🤖 Agent seçimi — uygun herhangi bir Jenkins ajanında çalışır
+    agent any
+
+    // 🛠️ Araç tanımı — derleme için gerekli araçları belirtir
+    tools{
+        // ☕ JDK kurulumu — JDK17 etiketli kurulum PATH'e eklenir
+        jdk 'JDK17'
+        // 📦 Maven kurulumu — Maven3 etiketli kurulum kullanılacaktır
+        maven 'Maven3'
+    }
+
+    // 🧩 Aşamalar grubu — pipeline içindeki tüm stage'leri barındırır
+    // Stage, Jenkins pipeline içinde belirli bir iş adımını veya süreci mantıksal olarak gruplayan yürütme bölümüdür.
+    stages {
+        // 🏗️ Build aşaması tanımı — Maven ile derleme/ paketleme
+        stage('Build Maven') {
+            // ▶️ Aşama adımları — burada checkout ve build çalışır
+            steps {
+                // 🔽 Kaynak kodu çekme — master dalından repo checkout yapılır
+                // Checkout yapmak, uzak depodaki main branch’teki güncel kaynak kodunu çalışma ortamına indirmek ve o branch’i aktif hâle getirmek demektir.
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/huseyinaydin99/devops/002-devops-pipeline']])
+                // ⚙️ Maven build — projeyi temizleyip paketler (Windows için bat, macOS veya Linux için sh)
+                // sh 'mvn clean install'
+                bat 'mvn clean install'
+            }
+        }
+
+        // ✅ Unit test aşaması — birim testleri çalıştırır ve rapor üretir
+        stage('Unit Test') {
+            // ▶️ Aşama adımları — test komutu burada çalıştırılır
+            steps {
+                // 🧪 Maven test — birim testleri yürütür
+                // sh 'mvn test'
+                bat 'mvn test'
+                // 📝 Test bildirimi — istersek ek log/metin bırakmak için kullanılır
+                // sh 'echo Unit Test'
+                // bat 'echo Unit Test'
+            }
+        }
+
+        // 🐳 Docker image oluşturma — uygulamadan Docker imajı üretir
+        stage('Docker Image') {
+           // ▶️ Aşama adımları — docker build komutu çalışır
+           steps {
+               // 🏷️ İmaj oluşturma ve etiketleme — Dockerfile kullanılarak build edilir
+               //sh 'docker build -t huseyin11/my-application:latest .'
+               bat 'docker build -t huseyin11/my-application:latest .'
+           }
+        }
+
+        // 📤 DockerHub'a gönderme — oluşturulan imajın registry'ye pushlanması
+        stage('Docker Image to DockerHub') {
+            // ▶️ Aşama adımları — kimlik bilgileri ile push işlemi yapılır
+            steps {
+                // 🧾 Script bloğu — credentials gibi dinamik işlemler için kullanılır
+                script{
+                    // 🔐 DockerHub token alımı — credentials store'dan güvenli biçimde çeker
+                    withCredentials([string(credentialsId: 'dockerhub', variable: 'dockerhub')]) {
+                        // 🔑 Docker login — token ile Docker Hub'a giriş (örnek echo ile gösterilmiş)
+                        /*
+                        DOCKERHUB_TOKEN, Jenkins’in Credentials Store’unda
+                        (secret text/secret file olarak) saklanır ve pipeline çalışırken
+                        withCredentials gibi bir mekanizma ile güvenli şekilde ortam değişkeni olarak enjekte edilir.
+                        */
+                        // sh 'echo docker login -u huseyin11 -p DOCKERHUB_TOKEN'
+                        // bat 'echo docker login -u huseyin11 -p DOCKERHUB_TOKEN'
+                        // sh 'echo docker login -u huseyin11 -p ${dockerhub}'
+                        bat 'echo docker login -u huseyin11 -p ${dockerhub}'
+
+                        // 🚀 İmaj push — etiketlenmiş imaj Docker Hub'a gönderilir
+                        // sh 'docker image push huseyin11/my-application:latest'
+                        bat 'docker image push huseyin11/my-application:latest'
+                    }
+                }
+            }
+        }
+
+        // ☸️ Kubernetes'e deploy — küme üzerinde servis/deployment uygulama
+        stage('Deploy to Kubernetes'){
+            // ▶️ Aşama adımları — kubernetesDeploy step'i ile YAML uygulanır
+            steps{
+                // 📦 Kube apply — deployment-service.yml kullanılarak küme güncellenir
+                kubernetesDeploy (configs: 'deployment-service.yml', kubeconfigId: 'kubernetes')
+            }
+            // ☸️ kubectl apply -f deployment-service.yml
+            // ☸️ deployment-service.yml, Kubernetes kümesinde uygulamayı çalıştırmak için Pod/ReplicaSet/Deployment yapılandırmasını ve uygulamaya erişim sağlamak üzere Service tanımını içeren YAML dosyasıdır.
+        }
+
+       // ⚙️ Jenkins’te ajan, pipeline adımlarını çalıştırmak için Jenkins master tarafından kullanılan, işleri fiziksel veya sanal bir ortamda yürüten yürütme makinesidir.
+       // 🧹 Temizlik aşaması — ajan üzerindeki gereksiz docker imajlarını temizler
+       stage('Docker Image to Clean') {
+           // ▶️ Aşama adımları — prune veya rmi işlemleri burada
+           steps {
+               // 🧼 Kullanılmayan imajları temizleme — alan boşaltmak için prune çalıştırılır
+               // sh 'docker rmi huseyin11/my-application:latest'
+               // bat 'docker rmi huseyin11/my-application:latest'
+
+               // 🗑️ Docker image prune — dangling ve kullanılmayan katmanları siler
+               // sh 'docker image prune -f'
+               bat 'docker image prune -f'
+
+               /*
+               🧩 Dangling 🌀: Docker’da “dangling image”, üzerinde tag bulunmayan ve hiçbir container tarafından referans edilmeyen, bu nedenle artık kullanılmayan imajdır. 🔚
+               🧹 docker image prune ♻️: Sistemdeki dangling (ve istenirse tüm kullanılmayan) Docker imajlarını otomatik temizleyerek disk alanı açar. 🗑️
+               🧨 docker rmi 💥: Belirttiğin Docker imajını (tag veya ID ile) doğrudan siler ve imajı sistemden tamamen kaldırır. 📤
+               ⚖️ prune vs rmi 🔍: docker prune otomatik temizlik yaparken, docker rmi yalnızca ID'ye göre seçileni yani belirli imajı siler. ✔️
+               */
+           }
+       }
+    }
+}

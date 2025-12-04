@@ -210,3 +210,60 @@ Sonuç olarak, bu manifest hem benim için çalışan bir altyapı tanımı, hem
 
 ### 💪🔥📦 Dockerfile’a Komut Bazlı Açıklamalar Ekleyerek Uygulamanın Çalışma ve Dağıtım Yapılandırmasını Net Şekilde Tanımladım 🚀⚙️🧱📘🔥💪
 Projeyi sadece derlemekle bırakmadım; çalışacağı ortamın davranışını, sınırlarını ve başlatma düzenini de baştan sona kurguladım. 🛠️📘 Temel imaj seçiminden (JVM runtime), derleme çıktısını imaj içinde sabitlemeye, port bildirimi ve uygulama başlatma komutuna kadar her satırı bilinçli tercihlerle yerleştirdim — amaç: tekrar üretilebilir, öngörülebilir ve devralınabilir bir çalışma noktası oluşturmak. 🔁✨ Açıklamalar satır satır eklenerek ileride hızla yorum yapılabilecek, hata ayıklamayı kolaylaştıracak ve ortam davranışını hemen anlamayı sağlayacak bir rehber haline geldi. 🔍🚦 Bu düzenleme; dağıtımda sürprizleri azaltır, test–prod tutarlılığını yükseltir ve yeni gelen ekip üyelerine pratik bir başlangıç noktası sunar. 👥📈 Sonuç olarak, uygulama hangi makineye gelirse gelsin aynı şekilde ayağa kalkacak; ben de başladığım işi devralana net bir yol bırakmış olacağım. 🚀📦🔧
+
+---
+
+### 🚀🧭 Jenkins Pipeline Akışı — CI/CD Sürecinin Güçlü, Temiz ve Akışkan Yapısı
+
+Bu bölüm, oluşturduğum Jenkins Pipeline yapısının nasıl çalıştığını, her aşamanın neyi hedeflediğini ve neden bu şekilde tasarlandığını kısa, yoğun ve güçlü bir anlatımla özetler. Teknik olarak net, gereksiz sözdiziminden uzak ve odaklıdır. ⚙️🔥
+
+---
+
+### 🧱 Pipeline Bloğu
+
+Pipeline, tüm CI/CD akışını kapsayan en üst seviye yapıdır ve tüm operasyonların çatı tanımını içerir. Her aşama, burada tanımlanan orkestrasyonun bir parçası olarak yürür. 🧭
+
+### 🤖 Agent
+
+Agent any, pipeline’ın Jenkins tarafından uygun görülen herhangi bir ajan üzerinde çalışmasına izin verir. Bu esneklik, build sürelerini optimize eder. ⚡
+
+### 🛠️ Tools
+
+Pipeline’ın derleme ve paketleme işlemlerinde kullanacağı araçları tanımlar. Burada JDK17 ve Maven3, ajan ortamına otomatik olarak eklenir. ☕📦
+
+### 🏗️ Build Maven
+
+Bu aşamada kaynak kodu main branch üzerinden çekilir ve Maven ile temiz bir derleme gerçekleştirilir. Kodun en güncel hâli test ve paket için hazırlanmış olur. 🧱🔧
+
+### ✅ Unit Test
+
+Tüm birim testleri Maven üzerinden koşturulur ve projenin hata vermeden derlenebilir olduğu doğrulanır. Süreç kalitesinin temeli bu aşamada sağlanır. 🧪📊
+
+### 🐳 Docker Image
+
+Uygulamanın Docker imajı Dockerfile kullanılarak oluşturulur ve latest etiketiyle versiyonlanır. Gerçek dağıtımın temeli bu build üzerine kurulur. 🏷️🛠️
+
+### 📤 DockerHub Push
+
+Jenkins Credentials Store’da saklanan güvenli token ile Docker Hub’a giriş yapılır ve yeni oluşturulan imaj registry’ye gönderilir. Güvenli ve izlenebilir bir artefact akışı sağlanır. 🔐🚀
+
+### ☸️ Deploy to Kubernetes
+
+deployment-service.yml kullanılarak Kubernetes kümesine dağıtım yapılır. Deployment ve Service tanımları uygulanır, sistem istenen sürüme güncellenir. 📦☸️
+
+### 🧹 Docker Image Clean
+
+Ajan üzerinde biriken kullanılmayan Docker imajları, disk alanı yönetimi amacıyla prune komutu ile temizlenir. Pipeline sonrası ortam tertemiz bırakılır. 🧼🗑️
+
+---
+
+### 🔍 Kısa Teknik Notlar
+
+* 🌀 Dangling Image: Tag’i olmayan ve hiçbir container tarafından kullanılmayan imajdır.
+* ♻️ `docker image prune`: Dangling ve kullanılmayan imajları otomatik temizler.
+* 💥 `docker rmi`: Sadece senin belirttiğin imajı doğrudan siler.
+* ⚖️ Fark: Prune otomatik temizlik yapar; RMI hedefli, manuel silme gerçekleştirir.
+
+---
+
+Bu pipeline, derlemeden dağıtıma uzanan eksiksiz bir CI/CD hattı sunar; her adım kontrollü, güvenli ve tutarlı olacak şekilde tasarlanmıştır.
