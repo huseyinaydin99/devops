@@ -1,0 +1,81 @@
+# Deployment kaynağının apps/v1 API sürümünde tanımlandığını belirtir.
+apiVersion: apps/v1
+
+# Bu kaynağın bir Deployment olduğunu ve bir grup Pod’un yaşam döngüsünü yöneten üst denetleyici olduğunu gösterir.
+kind: Deployment
+
+# Deployment’a ait ad ve tanımlayıcı bilgilerin tutulduğu metadata alanı.
+metadata:
+  # Deployment’ın adı; kubectl çıktılarında ve loglarda kolayca tanınmasını sağlar.
+  name: my-application-deployment
+
+# Deployment’ın nasıl davranacağını belirleyen ana yapılandırma alanı.
+spec:
+  # Deployment’ın yönetmesi gereken Pod’ları, etiket filtreleriyle seçen kısım.
+  selector:
+    # Belirtilen etiketlere sahip Pod’ların bu Deployment’a ait olduğunu gösterir.
+    matchLabels:
+      # app=my-application etiketi, Deployment’ın kontrol edeceği Pod kümesini tanımlar.
+      app: my-application
+
+  # Deployment’ın yeni Pod’ları hangi şablona göre oluşturacağını belirleyen bölüm.
+  template:
+    # Pod seviyesindeki kimlik bilgilerinin tanımlandığı meta veri.
+    metadata:
+      # Pod’lara verilecek etiket; hem Deployment hem Service seçicileriyle uyumlu olmasını sağlar.
+      labels:
+        app: my-application
+
+    # Pod içinde çalışacak container'ların ve davranışlarının tanımlandığı alan.
+    spec:
+      # Pod’a ait container listesinin başlangıcı.
+      containers:
+        # my-application adındaki container’ın temel tanımı.
+        - name: my-application
+
+          # Container’ın çalışacağı imajın Docker registry’den alınan tam adı.
+          image: huseyin11/my-application:latest
+
+          # Container için CPU ve bellek kullanım sınırlarının belirlendiği bölüm.
+          resources:
+            # Container’ın aşamayacağı maksimum kaynak değerleri.
+            limits:
+              # Bellek üst sınırının 512Mi olarak belirlenmesi.
+              memory: "512Mi"
+              # CPU üst sınırının 500m olarak tanımlanması.
+              cpu: "500m"
+
+          # Container’ın içerde hangi portu dinlediğini tanımlar.
+          ports:
+            # Uygulamanın container içinde 8081 portunu dinlediği.
+            - containerPort: 8081
+
+# Aynı dosyada ikinci bir Kubernetes kaynağının tanımlandığını gösterir.
+---
+# Yeni kaynağın v1 API sürümünde tanımlanan bir Service olduğunu belirtir.
+apiVersion: v1
+
+# Bu kaynağın bir Service olduğunu ve Pod’lara erişim için mantıksal bir ağ uç noktası sağladığını ifade eder.
+kind: Service
+
+# Service’e ait ad ve tanımlayıcı bilgilerin bulunduğu bölüm.
+metadata:
+  # Service’in adı; ilgili Pod’lara yönlendirilecek trafiğin giriş kapısını tanımlar.
+  name: my-application-service
+
+# Service’in trafik yönlendirme davranışlarını belirleyen yapılandırma alanı.
+spec:
+  # Service’in trafiği hangi etiketlere sahip Pod’lara yönlendireceğini belirleyen seçici.
+  selector:
+    # app=my-application etiketi, Service’in hedefleyeceği Pod kümesini tanımlar.
+    app: my-application
+
+  # Service’in dinleyeceği portu ve trafiği Pod içindeki hangi porta ileteceğini gösteren tanım.
+  ports:
+    # Service’in cluster içinde 8081 portundan erişilebilir olduğunu belirtir.
+    - port: 8081
+      # Gelen trafiğin Pod içindeki 8081 portuna iletileceğini ifade eder.
+      targetPort: 8081
+
+  # Service’in NodePort türünde olduğunu ve her node üzerinden belirli bir port ile dış erişim sağladığını belirtir.
+  type: NodePort
