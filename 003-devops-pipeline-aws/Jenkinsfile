@@ -1,0 +1,186 @@
+// Pipeline bloğunun genel yürütme sürecini tanımlar. 🚀
+pipeline {
+
+    // Bu pipeline'ın hangi ajan üzerinde çalışacağını belirtir. 🖥️
+    agent {
+        // Çalıştırılacak Jenkins agent etiketi. 🔖
+        label 'My-Jenkins-Agent'
+    }
+    // İstersek tüm/herhangi bir ajanlarda çalışabileceğini belirten alternatif. 🌍
+    // agent any
+
+    // Ortak ortam değişkenlerini tanımlar. ⚙️
+    environment {
+        // Uygulama adı değişkeni. 🏷️
+        APP_NAME = "003-devops-pipeline-aws"
+        // Sürüm numarası. 📌
+        RELEASE = "1.0"
+        // DockerHub kullanıcı adınız. 👤
+        DOCKER_USER = "huseyin11"
+        // Jenkins içindeki Docker login kimliği. 🔐
+        DOCKER_LOGIN = "dockerhub"
+        // Oluşturulacak Docker image adı. 📦
+        IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
+        // Image için oluşturulan dinamik tag. 🏁
+        IMAGE_TAG = "${RELEASE}.${BUILD_NUMBER}"
+        // Jenkins API token bilgisi, güvenli olarak çekilir. 🛡️
+        JENKINS_API_TOKEN = credentials ("JENKINS_API_TOKEN")
+    }
+
+    // Pipeline boyunca kullanılacak araçları tanımlar. 🧰
+    tools {
+        // Kullanılacak JDK versiyonu. ☕
+        jdk 'JDK21'
+        // Maven kurulumunu belirtir. 🧱
+        maven 'Maven3'
+    }
+
+    // Pipeline aşamalarını içerir. 🧩
+    stages {
+
+        // Workspace'i temizleyerek derleme için ortam hazırlar. 🧹
+        stage('Cleanup Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        // Kaynak kodunun SCM'den çekildiği aşamadır. 📥
+        stage('Checkout from SCM') {
+            steps {
+                // GitHub deposundan main branch kodlarını çeker. 🌐
+                //   checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/mimaraslan/devops-003-pipeline-aws']])
+                //scmGit, Jenkins pipeline'ında tanımlı Git deposundan kodu otomatik olarak çalışma alanıma çeken bir checkout yardımcı işlevidir.
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/huseyinaydin99/devops/003-devops-pipeline-aws'
+            }
+        }
+
+        // Maven üzerinden proje derlemesinin yapıldığı aşama. 🏗️
+        stage('Build Maven') {
+            steps {
+                //  sh 'mvn clean install'
+                //  bat 'mvn clean install'
+
+                // Maven ile paket oluşturulur. 📦
+                sh 'mvn clean package'
+                // Windows için alternatif komut. 🪟
+                // bat 'mvn clean package'
+            }
+        }
+
+        // Birim testlerin çalıştırıldığı aşama. 🧪
+        stage('Test Application') {
+            steps {
+                // Linux üzerinde test komutu. 📊
+                sh 'mvn test'
+                // Windows için alternatif. 🪟
+                //  bat 'mvn test'
+            }
+        }
+
+        // SonarQube kod analizi işlemlerinin yapıldığı aşama. 🔍
+        stage("SonarQube Analysis") {
+            steps {
+                script {
+                    // SonarQube ortamıyla entegre çalışmak için gerekli blok. 🤝
+                    withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') {
+                        sh "mvn sonar:sonar"
+                    }
+                    /*
+                    Jenkins’e SonarQube ortam değişkenlerini yükleyip mvn sonar:sonar komutuyla
+                    proje kodunu SonarQube’a analiz için gönderir.
+                    SonarQube sunucusu erişilebilir (ayakta) olmalı ve
+                    pipeline’ın SonarQube’a bağlanıp analiz gönderebilmesi
+                    için geçerli bir token/kimlik bilgisiyle yetkilendirme yapılmış olmalıdır.
+                    */
+                }
+            }
+        }
+
+        /*
+        // SonarQube kalite kapısı kontrolü yapılır. 🚧
+        stage("Quality Gate"){
+            steps {
+                script {
+                     waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
+                 }
+             }
+        }
+        */
+
+        // Docker image oluşturup DockerHub’a push eden aşama. 🐳⬆️
+        stage('Build & Push Docker Image to DockerHub') {
+            steps {
+                script {
+                    // DockerHub kimliği ile giriş yapar. 🔑
+                    docker.withRegistry('', DOCKER_LOGIN) {
+                        // Image build edilir. 🔨
+                        docker_image = docker.build "${IMAGE_NAME}"
+                        // Versiyon tag'i push edilir. 🏷️
+                        docker_image.push("${IMAGE_TAG}")
+                        // En güncel sürüm olarak latest push edilir. 🌟
+                        docker_image.push("latest")
+                    }
+                }
+            }
+        }
+
+        // Trivy ile zafiyet taraması yapılır. 🛡️
+        stage("Trivy Scan") {
+            steps {
+                script {
+                    // Docker image için yüksek ve kritik açıkları tarar. ⚠️
+                    sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image huseyin11/003-devops-pipeline-aws:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+                }
+            }
+        }
+
+        // Kullanılmayan image ve konteynerlerin temizlendiği aşama. 🗑️
+        stage ('Cleanup Artifacts') {
+            steps {
+                script {
+                    // Versiyonlu image silinir. ❌
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                    // Latest image silinir. ❌
+                    sh "docker rmi ${IMAGE_NAME}:latest"
+
+                    // Sunucu tarafında biriken kaynaklar için önerilen temizlik komutları. 🧽
+                    /*
+                    docker rmi $(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'devops-003-pipeline-aws')
+                    docker container rm -f $(docker container ls -aq)
+                    docker volume prune
+                    */
+                }
+            }
+        }
+
+        /*
+        Bu aşamada uzak bir Jenkins job’unu HTTP POST ile tetikleyip CD sürecini başlatıyorum.
+        curl içinde Jenkins API token’ı kullanarak kimlik doğrulaması
+        yapıyor ve IMAGE_TAG parametresini gönderiyorum.
+        Bu çağrı yalnızca tetikleme yapar; tetiklenen job’un tamamlanmasını
+        beklemek veya sonucunu doğrulamak istiyorsam ayrıca bir
+        kontrol/geri bildirim mekanizması eklemem gerekir.
+        */
+
+        /*
+        curl komutunda Jenkins API token kullanmamın nedeni,
+        uzak Jenkins sunucusuna güvenli bir şekilde kimlik doğrulaması
+        yaparak erişim sağlamaktır. Bu token olmadan sunucu isteği
+        yetkisiz kabul edeceği için pipeline tetiklenmez. Gönderdiğim
+        istek içinde image tag bilgisini de ileterek CD sürecinin doğru
+        sürümle çalışmasını garanti ediyorum. Böylece kendi
+        bilgisayarımdan bağımsız olarak, uzaktaki Jenkins üzerinde
+        dağıtım sürecini otomatik olarak başlatmış oluyorum.
+        */
+        // CD pipeline tetiklenerek teslimat süreci başlatılır. 🔔➡️
+        stage("Trigger CD Pipeline") {
+            steps {
+                script {
+                    // Uzak Jenkins job’una tetikleme gönderilir. 🌐⚡
+                    sh "curl -v -k --user huseyin11:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${IMAGE_TAG}' 'ec2-34-200-201-217.compute-1.amazonaws.com:8080/job/003-gitops-devops-pipeline-aws/buildWithParameters?token=GITOPS_TOKEN_INFO'"
+                }
+            }
+        }
+    }
+}

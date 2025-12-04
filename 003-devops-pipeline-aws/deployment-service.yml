@@ -1,0 +1,60 @@
+# Deployment nesnesinin hangi API sürümüyle tanımlandığını belirtir.
+apiVersion: apps/v1
+# Bu kaynağın bir Deployment olduğunu ifade eder.
+kind: Deployment
+# Deployment için metadata bilgilerini içerir.
+metadata:
+  # Deployment’a verilen isimdir.
+  name: my-application-deployment
+# Deployment davranışını tanımlayan ana spec bloğudur.
+spec:
+  # Pod eşleme kriterlerini belirleyen label seçicidir.
+  selector:
+    matchLabels:
+      # Bu Deployment’ın yöneteceği Pod’ların etiketidir.
+      app: my-application
+  # Oluşturulacak Pod’un şablonunu tanımlar.
+  template:
+    metadata:
+      labels:
+        # Pod’lara uygulanacak etiket bilgisidir.
+        app: my-application
+    # Pod içerisinde çalışacak konteyner yapılandırmasını içerir.
+    spec:
+      containers:
+        # Konteyner için tanımlanan isimdir.
+        - name: my-application
+          # Konteyner görüntüsünün kaynağını belirtir.
+          image: huseyin11/my-application:latest
+          # Konteynerin kaynak sınırlarını tanımlar.
+          resources:
+            limits:
+              # Konteynerin kullanabileceği maksimum bellek miktarı.
+              memory: "512Mi"
+              # Konteynerin kullanabileceği maksimum CPU miktarı.
+              cpu: "500m"
+          # Konteynerin dinleyeceği portu tanımlar.
+          ports:
+            - containerPort: 8081
+---
+# Service nesnesinin API sürümünü belirtir.
+apiVersion: v1
+# Bu kaynağın bir Service olduğunu ifade eder.
+kind: Service
+# Service’e ait metadata bilgilerini içerir.
+metadata:
+  # Service’e verilen isimdir.
+  name: my-application-service
+# Service’in çalışma şeklini tanımlayan spec kısmıdır.
+spec:
+  # Service’in hangi Pod’lara trafik yönlendireceğini belirler.
+  selector:
+    app: my-application
+  # Service tarafından açılacak portları tanımlar.
+  ports:
+    # İstemcilerin Service üzerinden erişeceği port numarasıdır.
+    - port: 8083
+      # Trafiğin Pod içindeki hangi porta yönlendirileceğini belirtir.
+      targetPort: 8083
+  # Servisin dışa açılma yöntemini NodePort olarak belirler.
+  type: NodePort
