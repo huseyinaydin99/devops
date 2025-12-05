@@ -1,0 +1,24 @@
+# ---------------- Deployment ----------------
+apiVersion: apps/v1   # Kubernetes’in modern API sürümü, Deployment için gerekli.
+kind: Deployment      # Pod’ları yönetecek üst seviye kaynak tipi, uygulamayı ayağa kaldırıyor.
+metadata:
+  name: 003-devops-pipeline-cd-deployment   # Deployment’a verdiğim isim, kayıtlarda görünür.
+spec:
+  replicas: 5   # Aynı anda çalışacak pod sayısı, yükü bölecek şekilde 5 dedim.
+  selector:
+    matchLabels:
+      app: 003-devops-pipeline-cd   # Pod’ları eşleştirmek için etiket, yanlış pod’u kapsamasın diye.
+  template:
+    metadata:
+      labels:
+        app: 003-devops-pipeline-cd   # Pod içi etiketleme, selector ile uyumlu olmalı ki sorunsuz çalışsın.
+    spec:
+      containers:
+        - name: 003-devops-pipeline-cd   # Container’a verdiğim isim, loglarda ve kubectl’de görünür.
+          image: huseyin11/003-devops-pipeline-aws:1.0.41   # Docker imajımın adresi, bu çalıştırılacak .jar’ı içeriyor.
+          resources:
+            limits:
+              memory: "256Mi"   # Pod’un maximum hafıza kullanımı, taşırmasın diye sınırladım.
+              cpu: "500m"       # CPU sınırı, sistemin boğulmaması için yarım çekirdek verdim.
+          ports:
+            - containerPort: 8080   # Uygulamanın dinlediği port, her pod kendi içinde 8080’i açıyor.

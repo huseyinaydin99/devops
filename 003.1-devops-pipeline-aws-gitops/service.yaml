@@ -1,0 +1,16 @@
+# ---------------- Service ----------------
+apiVersion: v1   # Klasik core API, Service için bu sürüm yeterli ve stabil.
+kind: Service    # Pod’lara network üzerinden erişim sağlayacak kaynak tipi.
+metadata:
+  name: 003-devops-pipeline-cd-service   # Service’e verdiğim isim, kubectl listelerinde kolay bulmak için.
+  namespace: default   # Default namespace kullanıyorum, başka bir şeyle karışmasın diye.
+  labels:
+    app: 003-devops-pipeline-cd   # Etiketleme, hangi pod’ları kapsayacağını belirlemek için.
+spec:
+  selector:
+    app: 003-devops-pipeline-cd   # Service hangi pod’ları bulacak, artık Deployment ile eşleşiyor.
+  ports:
+    - port: 8080        # Cluster içinden Service’in dinlediği port, uygulamayı burada açıyorum.
+      targetPort: 8080  # Pod içindeki container’ın portu, birebir eşleşiyor ki trafik doğru gitsin.
+  type: LoadBalancer    # AWS veya cloud üzerinde otomatik dış IP alır, dışarıdan ulaşabilmek için.
+#  type: ClusterIP      # Sadece cluster içi erişim, dışarıya açılmayacaksa bunu kullanırım.

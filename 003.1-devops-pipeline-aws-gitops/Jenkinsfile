@@ -1,0 +1,95 @@
+pipeline {  // 🚀 Başlıyoruz! Bu pipeline tüm adımları kapsıyor, CI/CD yolculuğu burada başlıyor. 🌟
+    agent {  // 🤖 Hangi Jenkins agent’ında çalışacak onu belirliyoruz. 🛠️
+        node {  // 🏷️ Node etiketi ile agent seçimi yapıyoruz, tek tek ayarladım.
+            label 'My-Jenkins-Agent'  // 📌 Bu agent’ta çalışacak, loglarda kolay bulmak için. 👀
+        }
+    }
+    //agent any  // 🌍 Alternatif olarak herhangi bir agent da seçebilirdik, esnek çözüm. 🔄
+
+    environment {  // 🌿 Ortak/ortam değişkenler burada tanımlanır, tüm stage’ler bunu kullanabilir. 🧩
+        APP_NAME = "003-devops-pipeline-aws"  // 🏗️ Uygulama adı, tüm süreç boyunca referans alacağım. 📝
+    }
+
+    stages {  // 🎯 Artık adımlar başlıyor, stage’ler sırayla çalışacak. 🛤️
+
+        stage('Cleanup Workspace') {  // 🧹 Workspace’i temizleme adımı, eski dosyalar sorun çıkarmasın diye. ⚡
+            steps {
+                //Groovy, Java Virtual Machine (JVM) üzerinde çalışan, Java ile uyumlu, dinamik ve kolay okunabilir bir programlama dilidir.
+                script {  // 📝 Groovy script içinde komutlar çalıştırılıyor.
+                    cleanWs()  // 🧽 Temizlik yaptım, build alanı sıfırlandı. ✨
+                }
+            }
+        }
+
+        stage('SCM GitHub') {  // 🌐 GitHub’dan kod çekme adımı, en güncel kod burada. 🔄
+            steps {
+                //checkout Jenkins pipeline içinde bir komut olup, uzaktaki bir kaynak kod deposunu (örneğin GitHub) çalışma alanına indirirken, scmGit ise bu işlemi Git tabanlı repolar için yapılandırmayı sağlayan parametre setidir.
+                checkout scmGit(
+                    branches: [[name: '*/main']],  // 🌲 Master branch’i alıyorum, ana kod burası. 🏛️
+                    extensions: [],  // 🧩 Ekstra eklenti yok, temel checkout yeterli. 🎯
+                    userRemoteConfigs: [[url: 'https://github.com/huseyinaydin99/devops/003.1-devops-pipeline-aws-gitops']]
+                )  // 📥 Repo URL’den kodu indiriyorum, artık local workspace’de. 💻
+            }
+        }
+
+        stage("Update the Deployment Tags") {  // 🏷️ Deployment dosyasındaki(dosya üzerinde güncelleme yapılıyor) image tag’i güncelleme. 🔄
+            steps {
+                //sed -i komutu, bir dosyanın içeriğini satır satır düzenleyerek (örneğin metin değiştirme veya güncelleme) yapılan değişiklikleri doğrudan dosyaya kaydeder.
+                sh """
+                   echo "Before update:"  # 👀 Güncelleme öncesi dosyayı görmek için yazdırıyorum.
+                   cat deployment.yaml  # 📄 Mevcut deployment.yaml içeriğini ekrana basıyorum.
+
+                   sed -i "s|\\(image: *huseyin11/003-devops-pipeline-aws:\\).*|\\1${IMAGE_TAG}|" deployment.yaml  # 🔧 Image tag’i güncelledim, yeni build için hazır.
+
+                   echo "After update:"  # 🎉 Güncel hali görmek için tekrar yazdırıyorum.
+                   cat deployment.yaml  # 📄 Değişen deployment.yaml’i kontrol ediyorum.
+                """
+            }
+        }
+
+        stage("Push the changed deployment file to Git") {  // 📤 Güncellenmiş deployment dosyasını Git’e push etme.
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github',  // 🔑 Jenkins’te tanımlı GitHub kullanıcı bilgisi.
+                    usernameVariable: 'GIT_USER',  // 🧑 Kullanıcı adı değişkeni.
+                    passwordVariable: 'GIT_TOKEN'  // 🔒 Token değişkeni, güvenli push için.
+                )]) {
+                    /*
+                    set -euo pipefail, bir Bash script’inde olası hataları kontrol
+                    altına alır: -e herhangi bir komut hata verdiğinde script’in
+                    durmasını sağlar, -u tanımsız değişken kullanımında uyarı
+                    verip durdurur, -o pipefail boru hattındaki herhangi bir komut
+                    başarısız olursa tüm pipeline’in hata vermesini sağlar; böylece
+                    script daha güvenli çalışır ve gerekirse rollback ile yapılan
+                    değişiklikleri geri almak daha güvenli olur.
+                    */
+                    /*
+                    git checkout -B main origin/main komutu, yerel main branch’ini uzak
+                    repodaki (origin/main) son hâliyle eşitler ve branch’e geçer. || true
+                    kısmı ise, eğer bu işlem sırasında bir hata oluşursa script’in
+                    durmasını engeller ve pipeline’in devam etmesini sağlar.
+                    */
+                    sh '''#!/usr/bin/env bash
+                        set -euo pipefail  # ⚠️ Hata olursa hemen dur, güvenli script çalıştırma.
+
+                        git config user.name  "huseyinaydin99"  # 🧑 Commit için kullanıcı adı ayarladım. ✍️
+                        git config user.email "huseyinaydin99@gmail.com"  # 📧 Commit email adresi.
+
+                        git checkout -B main origin/main || true  # 🌿 Eğer HEAD detached ise, yeni main branch oluşturup uzak main ile eşitler ve geçiş yapar, böylece güvenli çalışır. 🔄
+
+                        git add deployment.yaml || true  # ➕ Dosyayı stage’ledim, commit için hazır. ✔️
+
+                        if git diff --cached --quiet; then  # 🤔 Değişiklik yoksa commit atma.
+                            echo "No changes to commit."  # 📝 Bilgilendirme mesajı commit atılmayacak diye.
+                            exit 0  # ✋ İşlemi durdur, push yok.
+                        fi
+
+                        git commit -m "Updated Deployment Manifest"  # 📝 Commit mesajı ile değişiklikleri kaydettim. ✅
+
+                        git push "https://${GIT_USER}:${GIT_TOKEN}@github.com/huseyinaydin99/devops/003.1-devops-pipeline-aws-gitops" HEAD:main  # 🚀 GitHub’a push yaptım, pipeline tamam! 🌟
+                    '''
+                }
+            }
+        }
+    }
+}
