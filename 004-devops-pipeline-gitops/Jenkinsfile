@@ -1,0 +1,95 @@
+pipeline {
+    agent {
+        node {
+            label 'My-Jenkins-Agent'
+        }
+    }
+
+    environment {
+        // 📦 Uygulama adı (pipeline genelinde kullanılabilir)
+        APP_NAME = "devops-application-gitops"
+
+        // ⚠️ IMAGE_TAG burada tanımlı değilse build sırasında hata alırsın
+        // Örn: IMAGE_TAG = "v1.0.0" veya BUILD_NUMBER ile üretilebilir
+    }
+
+    stages {
+
+        // 🧹 Workspace temizliği
+        stage('🧹 Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        // 📥 GitHub repository çekme
+        stage('📥 Checkout Source Code (GitHub)') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/huseyinaydin99/devops/004-devops-pipeline-gitops'
+                    ]]
+                )
+            }
+        }
+
+        // 🐳 Deployment manifest içinde image tag güncelleme
+        stage('🐳 Update Deployment Image Tag') {
+            steps {
+                sh """
+                    echo "📄 Guncelleme oncesi:"
+                    cat deployment.yaml
+
+                    echo "🔄 Imaj versiyonu guncelleniyor..."
+
+                    //Bu komut, deployment.yaml dosyasındaki Docker image satırında repo adını değiştirmeden sadece versiyon (tag) kısmını alıp ${IMAGE_TAG} ile günceller. Yani deployment.yaml dosyası üzerinde değişiklik(update) yapıyor.
+                    sed -i "s|\\(image: *huseyinaydin99/devops-application:\\).*|\\1${IMAGE_TAG}|" deployment.yaml
+
+                    echo "✅ Guncelleme sonrasi:"
+                    cat deployment.yaml
+                """
+            }
+        }
+
+        // Güncellenen deployment dosyasını GitHub'a push etme
+        stage('🔁 Commit & Push Changes') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'TOKEN_ID_GITHUB',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''#!/usr/bin/env bash
+                        set -euo pipefail // Güvenlik: Bash scriptte hata oluştuğunda scripti durdurur, tanımsız değişken kullanımını engeller ve pipeline içindeki hataları da yakalayarak güvenli çalışmayı sağlar.
+
+                        echo "⚙️ Git config ayarlanıyor..."
+                        git config user.name  "huseyinaydin99"
+                        git config user.email "huseyinaydin99@gmail.com"
+
+                        echo "🔀 Branch kontrolü..."
+                        git checkout -B main origin/main || true // komutu, GitHub’daki main branch’ini yereldeki main branch’iyle birebir aynı yapar (uzaktaki commitleri yereline getirip eşitler) ve hata olursa işlemi durdurmaz.
+
+                        // || true ifadesi, önceki komut hata verse bile (örneğin branch yoksa ya da checkout başarısızsa) komutu “başarılıymış gibi” saydırarak pipeline’ın durmasını engellemek için kullanılır.
+
+                        echo "➕ deployment.yaml ekleniyor..."
+                        git add deployment.yaml || true
+
+                        # 🧠 Değişiklik yoksa commit yapma
+                        if git diff --cached --quiet; then
+                            echo "ℹ️ Değişiklik yok, commit atlanıyor."
+                            exit 0
+                        fi
+
+                        echo "💾 Commit oluşturuluyor..."
+                        git commit -m "🚀 Güncellenmiş deployment dosyası (otomatik CI/CD)"
+
+                        echo "🚀 GitHub'a push ediliyor..."
+                        git push "https://${GIT_USER}:${GIT_TOKEN}@github.com/huseyinaydin99/devops/004-devops-pipeline-gitops" HEAD:main
+                    '''
+                }
+            }
+        }
+    }
+}
