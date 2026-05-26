@@ -1,0 +1,60 @@
+
+
+resource "aws_security_group" "app_sg" {
+  # AWS üzerinde "app_sg" isimli bir Security Group (güvenlik grubu) kaynağı oluşturur.
+
+  name = "app-security-group"
+  # Security Group’un AWS içinde görünen adını belirler.
+
+  description = "Allow HTTP, SSH traffic"
+  # Bu güvenlik grubunun amacını açıklayan kısa bir açıklama tanımlar.
+
+  ingress {
+  # Dışarıdan (inbound) gelen trafik kurallarını tanımlayan blok başlangıcıdır.
+
+  from_port = 22
+  # SSH bağlantısı için başlangıç portunu 22 olarak belirler.
+
+  to_port = 22
+  # SSH bağlantısı için bitiş portunu 22 olarak belirler (tek port açılmış olur).
+
+  protocol = "tcp"
+  # Bu kuralın TCP protokolü üzerinden uygulanacağını belirtir.
+
+  cidr_blocks = ["0.0.0.0/0"] # SSH erişimi
+  # SSH erişimine tüm IP adreslerinden izin verir.
+}
+
+  ingress {
+    # HTTP için yeni bir inbound trafik kural bloğu başlatır.
+
+    from_port = 80
+    # HTTP trafiği için başlangıç portunu 80 olarak belirler.
+
+    to_port = 80
+    # HTTP trafiği için bitiş portunu 80 olarak belirler.
+
+    protocol = "tcp"
+    # HTTP trafiğinin TCP protokolü ile çalışacağını belirtir.
+
+    cidr_blocks = ["0.0.0.0/0"] # HTTP erişimi
+    # HTTP servisine tüm dünyadan erişime izin verir.
+  }
+
+  egress {
+    # Dışarıya (outbound) giden trafik kurallarını tanımlar.
+
+    from_port = 0
+    # Tüm çıkış portlarını kapsayacak başlangıç değerini belirtir.
+
+    to_port = 0
+    # Tüm çıkış portlarını kapsayacak bitiş değerini belirtir.
+
+    protocol = "-1"
+    # Tüm protokoller için çıkış trafiğine izin verir.
+
+    cidr_blocks = ["0.0.0.0/0"] # tüm çıkışlar
+    # Herhangi bir IP adresine sınırsız çıkış trafiği izni verir.
+  }
+}
+
