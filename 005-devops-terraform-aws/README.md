@@ -2,6 +2,10 @@
 
 Terraform, altyapıyı kodla (Infrastructure as Code 🧱) tanımlayıp AWS, Azure, GCP gibi bulut ortamlarında sunucu, ağ, veritabanı gibi kaynakları manuel tıklamalar yerine deklaratif şekilde otomatik oluşturup yönetmeye yarayan bir araçtır ⚙️; yani “ben ne istiyorum” dersin, Terraform da “nasıl yapılacağını” kendisi planlayıp uygular 🚀. Asıl çözüm getirdiği problem, klasik DevOps öncesi dünyadaki kaotik ve tekrarlanamaz manuel altyapı kurulumlarıdır 🧯—aynı sistemi tekrar kurmak zor, hataya açık ve zaman kaybettiriciydi. Terraform ile altyapı versiyonlanabilir 📦, tekrar üretilebilir 🔁, audit edilebilir 🔍 ve ekipler arasında tutarlı hale gelir 🤝. DevOps dünyasında yeri, CI/CD kadar kritiktir çünkü uygulama deploy edilmeden önce çalışacağı tüm ortamı deterministik şekilde hazırlar 🏗️. Yani DevOps’ta Terraform “pipeline’ın görünmeyen ama en temel zemini”dir 🌍; uygulamayı değil, uygulamanın yaşayacağı dünyayı inşa eder.
 
+# 🔁 Terraform’da Geri Dönüş Mantığı (Git ile birlikte rollback yaklaşımı) 🚀
+
+Terraform’da apply yaptıktan sonra değişiklik yapıp tekrar plan + apply çalıştırdığında sistem AWS üzerinde yeni duruma güncellenir ⚙️🚀; ancak Git’teki gibi doğrudan “geri al” butonu yoktur ❌. “Eski Terraform kod sürümüne (Git commit’i gibi) dönmek” demek 📌, projenin daha önceki çalışan haline Git üzerinden geri gitmek (örneğin git checkout veya eski commit’e dönmek) ve Terraform dosyalarını o eski haline getirmek demektir 🔁; sonra tekrar terraform apply çalıştırdığında Terraform mevcut AWS durumunu o eski kodla karşılaştırır ve altyapıyı tekrar o eski hale getirir 🏗️🔍. Yani geri dönüş işlemi Terraform’da doğrudan değil, kodun versiyon kontrol sistemi (Git) üzerinden eski haline getirilip yeniden uygulanmasıyla yapılır 📦⚡.
+
 # DevOps Pipeline
 
 ## CI/CD Evreni
