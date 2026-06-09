@@ -1,126 +1,120 @@
-resource "aws_key_pair" "ubuntu_key" {
-  key_name   = "My-Ubuntu-Key"
-  public_key = file("~/.ssh/id_rsa.pub")
-}
-
-resource "aws_eip" "jenkins_eip" {
-  domain = "vpc"
-
-  tags = {
-    Name = "My-Jenkins-Elastic-IP"
-  }
-}
-
-resource "aws_eip_association" "jenkins_eip_assoc" {
-  instance_id   = aws_instance.web.id
-  allocation_id = aws_eip.jenkins_eip.id
-}
-
-#resource "aws_instance" "ubuntu" {
-  #ami           = "ami-0b6c6ebed2801a5cb"
-  #instance_type = "t3.xlarge"
-
-  #key_name = aws_key_pair.ubuntu_key.key_name
-#}
-
-resource "aws_iam_role" "ec2_admin_role" {
-  name = "ec2-admin-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "admin_attach" {
-  role       = aws_iam_role.ec2_admin_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
-
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2-admin-profile"
-  role = aws_iam_role.ec2_admin_role.name
-}
-
+# =========================
+# SSH KEY (TEK DOĞRU YÖNTEM)
+# =========================
 
 resource "tls_private_key" "ssh" {
   algorithm = "RSA"
 }
 
 resource "aws_key_pair" "mykey" {
-  key_name   = "my-key"
+  key_name   = "my-jenkins-key"
   public_key = tls_private_key.ssh.public_key_openssh
 }
 
 resource "local_file" "pem" {
   content  = tls_private_key.ssh.private_key_pem
-  filename = "${path.module}/my-key.pem"
+  filename = "${path.module}/my-jenkins-key.pem"
 }
 
-resource "aws_instance" "web" {  # EC2 instance (VM) oluşturuluyor, Terraform içinde adı "web"
-  ami = "ami-0b6c6ebed2801a5cb"  # Kullanılacak işletim sistemi imajı (Ubuntu/Amazon Linux AMI ID)
-  instance_type = "t3.xlarge"    # Sunucunun CPU/RAM gücü (orta-yüksek performans)
-  #key_name = "My-Ubuntu-Key"     # SSH ile bağlanmak için kullanılacak key pair adı
-  vpc_security_group_ids = [aws_security_group.My-Jenkins-Server-SG.id]  # Bu instance’a bağlı güvenlik grubu (port izinleri)
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
-  key_name = aws_key_pair.mykey.key_name
-  user_data = templatefile("./03_install.sh", {})  # Sunucu ilk açıldığında çalışacak kurulum scripti (Jenkins vs.)
+# =========================
+# SECURITY GROUP
+# =========================
 
+resource "aws_security_group" "jenkins_sg" {
+  name        = "jenkins-sg"
+  description = "Allow SSH, HTTP, Jenkins, Sonar, apps"
 
-  tags = {
-    Name = "My-Jenkins-Server"   # AWS panelinde instance’ı isimlendiren tag
+  ingress = [
+    for port in [22, 80, 443, 8080, 9000, 3000] : {
+      description      = "allow ports"
+      from_port        = port
+      to_port          = port
+      protocol         = "tcp"
+      cidr_blocks      = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids  = []
+      security_groups  = []
+      self             = false
+    }
+  ]
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = []
   }
 
-  root_block_device {            # Ana disk (root volume) ayarları başlıyor
-    volume_size = 20             # Disk boyutu 20 GB olarak ayarlanıyor
-  }                               # Root disk ayar bloğu kapanıyor
-}                                  # EC2 instance tanımı bitiyor
+  tags = {
+    Name = "jenkins-sg"
+  }
+}
 
-// GÖREV 1: YAPILDI!
-// IP sabitleme Terraform ile yapılacak.   # Elastic IP atanarak public IP’nin değişmemesi sağlanacak
-// GÖREV 2: YAPILDI! YUKARDA!
-// Admin Rolü tanımlanacak.                # IAM role oluşturulacak
-// EKS'yi kuracak bu makineye EC2 Admin Rolü verilecek.  # EC2’ye AWS üzerinde full yetki verilecek (EKS kurabilmesi için)
+# =========================
+# IAM ROLE (EC2 FULL ACCESS)
+# =========================
 
+resource "aws_iam_role" "ec2_role" {
+  name = "ec2-admin-role"
 
-resource "aws_security_group" "My-Jenkins-Server-SG" {  # Güvenlik grubu oluşturuluyor (firewall gibi)
-  name = "My-Jenkins-Server-SG"                          # Security group adı
-  description = "Allow TLS inbound traffic"              # Açıklama (TLS inbound trafik izinleri)
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
 
-  ingress = [                                            # Dışarıdan gelen (inbound) trafik kuralları
-    for port in [22, 80, 443, 8080, 9000, 3000] : {     # Bu portlar için tek tek kural oluşturuluyor
-      description = "inbound rules"                      # Kural açıklaması
-      from_port = port                                   # Başlangıç portu (aynı port)
-      to_port = port                                     # Bitiş portu (aynı port -> tek port açılır)
-      protocol = "tcp"                                   # TCP protokolü üzerinden izin veriliyor
-      cidr_blocks = ["0.0.0.0/0"]                        # Dünyanın her yerinden erişim (çok açık güvenlik)
-      ipv6_cidr_blocks = []                              # IPv6 kapalı
-      prefix_list_ids = []                               # AWS prefix list kullanılmıyor
-      security_groups = []                               # Başka SG referansı yok
-      self = false                                       # Kendi SG içi trafik değil
-    }                                                    # Her port için kural tamamlanıyor
-  ]                                                      # ingress listesi bitiyor
+resource "aws_iam_role_policy_attachment" "ec2_admin" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
 
-  egress {                                               # Sunucudan dışarı çıkan trafik (outbound)
-    from_port = 0                                        # Tüm portlar
-    to_port = 0                                          # Tüm portlar
-    protocol = "-1"                                      # Tüm protokoller (TCP/UDP/ICMP)
-    cidr_blocks = ["0.0.0.0/0"]                         # Her yere çıkış izni
-  }                                                      # egress bloğu bitiyor
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "ec2-admin-profile"
+  role = aws_iam_role.ec2_role.name
+}
+
+# =========================
+# EC2 INSTANCE (JENKINS SERVER)
+# =========================
+
+resource "aws_instance" "jenkins" {
+  ami                    = "ami-0b6c6ebed2801a5cb"
+  instance_type          = "t3.xlarge"
+  key_name               = aws_key_pair.mykey.key_name
+  vpc_security_group_ids = [aws_security_group.jenkins_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+
+  user_data = file("${path.module}/03_install.sh")
+
+  root_block_device {
+    volume_size = 20
+  }
 
   tags = {
-    Name = "My-Jenkins-Server-SG"                       # Security group etiketi
+    Name = "My-Jenkins-Server"
   }
-}                                                        # Security group tanımı bitiyor
+}
 
+# =========================
+# ELASTIC IP (STATIC IP)
+# =========================
 
-# EKSyi otomatikten kurmak için Create role EC2          # EC2’ye IAM role eklenmesi gerekiyor
-# Add permissions kısmından Permissions policies bu yetkiyi AdministratorAccess vereceğiz.  # Full AWS yetkisi verilir
-# Role name : EKS_EC2_ROLE                               # IAM role adı
-# Modify IAM role  - Attach an IAM role to your instance. # Role EC2 instance’a bağlanır
+resource "aws_eip" "jenkins_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name = "jenkins-eip"
+  }
+}
+
+resource "aws_eip_association" "jenkins_assoc" {
+  instance_id   = aws_instance.jenkins.id
+  allocation_id = aws_eip.jenkins_eip.id
+}
