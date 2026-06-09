@@ -1,9 +1,60 @@
+resource "aws_key_pair" "ubuntu_key" {
+  key_name   = "My-Ubuntu-Key"
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
+resource "aws_eip" "jenkins_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name = "My-Jenkins-Elastic-IP"
+  }
+}
+
+resource "aws_eip_association" "jenkins_eip_assoc" {
+  instance_id   = aws_instance.web.id
+  allocation_id = aws_eip.jenkins_eip.id
+}
+
+#resource "aws_instance" "ubuntu" {
+  #ami           = "ami-0b6c6ebed2801a5cb"
+  #instance_type = "t3.xlarge"
+
+  #key_name = aws_key_pair.ubuntu_key.key_name
+#}
+
+resource "aws_iam_role" "ec2_admin_role" {
+  name = "ec2-admin-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "admin_attach" {
+  role       = aws_iam_role.ec2_admin_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "ec2-admin-profile"
+  role = aws_iam_role.ec2_admin_role.name
+}
+
 resource "aws_instance" "web" {  # EC2 instance (VM) oluşturuluyor, Terraform içinde adı "web"
   ami = "ami-0b6c6ebed2801a5cb"  # Kullanılacak işletim sistemi imajı (Ubuntu/Amazon Linux AMI ID)
   instance_type = "t3.xlarge"    # Sunucunun CPU/RAM gücü (orta-yüksek performans)
   key_name = "My-Ubuntu-Key"     # SSH ile bağlanmak için kullanılacak key pair adı
   vpc_security_group_ids = [aws_security_group.My-Jenkins-Server-SG.id]  # Bu instance’a bağlı güvenlik grubu (port izinleri)
   user_data = templatefile("./03_install.sh", {})  # Sunucu ilk açıldığında çalışacak kurulum scripti (Jenkins vs.)
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   tags = {
     Name = "My-Jenkins-Server"   # AWS panelinde instance’ı isimlendiren tag
@@ -14,12 +65,9 @@ resource "aws_instance" "web" {  # EC2 instance (VM) oluşturuluyor, Terraform i
   }                               # Root disk ayar bloğu kapanıyor
 }                                  # EC2 instance tanımı bitiyor
 
-
-// GÖREV 1:
+// GÖREV 1: YAPILDI!
 // IP sabitleme Terraform ile yapılacak.   # Elastic IP atanarak public IP’nin değişmemesi sağlanacak
-
-
-// GÖREV 2:
+// GÖREV 2: YAPILDI! YUKARDA!
 // Admin Rolü tanımlanacak.                # IAM role oluşturulacak
 // EKS'yi kuracak bu makineye EC2 Admin Rolü verilecek.  # EC2’ye AWS üzerinde full yetki verilecek (EKS kurabilmesi için)
 
