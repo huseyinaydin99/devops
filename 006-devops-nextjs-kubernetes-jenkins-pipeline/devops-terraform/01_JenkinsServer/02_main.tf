@@ -48,13 +48,30 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_admin_role.name
 }
 
+
+resource "tls_private_key" "ssh" {
+  algorithm = "RSA"
+}
+
+resource "aws_key_pair" "mykey" {
+  key_name   = "my-key"
+  public_key = tls_private_key.ssh.public_key_openssh
+}
+
+resource "local_file" "pem" {
+  content  = tls_private_key.ssh.private_key_pem
+  filename = "${path.module}/my-key.pem"
+}
+
 resource "aws_instance" "web" {  # EC2 instance (VM) oluşturuluyor, Terraform içinde adı "web"
   ami = "ami-0b6c6ebed2801a5cb"  # Kullanılacak işletim sistemi imajı (Ubuntu/Amazon Linux AMI ID)
   instance_type = "t3.xlarge"    # Sunucunun CPU/RAM gücü (orta-yüksek performans)
-  key_name = "My-Ubuntu-Key"     # SSH ile bağlanmak için kullanılacak key pair adı
+  #key_name = "My-Ubuntu-Key"     # SSH ile bağlanmak için kullanılacak key pair adı
   vpc_security_group_ids = [aws_security_group.My-Jenkins-Server-SG.id]  # Bu instance’a bağlı güvenlik grubu (port izinleri)
-  user_data = templatefile("./03_install.sh", {})  # Sunucu ilk açıldığında çalışacak kurulum scripti (Jenkins vs.)
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  key_name = aws_key_pair.mykey.key_name
+  user_data = templatefile("./03_install.sh", {})  # Sunucu ilk açıldığında çalışacak kurulum scripti (Jenkins vs.)
+
 
   tags = {
     Name = "My-Jenkins-Server"   # AWS panelinde instance’ı isimlendiren tag

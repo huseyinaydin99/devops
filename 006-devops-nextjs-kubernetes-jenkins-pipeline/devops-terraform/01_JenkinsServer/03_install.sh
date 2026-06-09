@@ -1,122 +1,115 @@
-#!/bin/bash  # Bu script Bash shell ile çalıştırılır
-
-sudo apt update  # Paket listelerini günceller (repo index yenilenir)
-sudo apt upgrade -y  # Sistemdeki tüm paketleri en güncel sürüme yükseltir (-y otomatik onay verir)
-
-
-# java kurulumu
-sudo apt install openjdk-21-jdk -y  # Java 21 JDK kurar (Jenkins ve build işlemleri için gerekli)
-/usr/bin/java –version  # Java sürümünü kontrol eder (NOT: burada tire karakteri hatalı olabilir -> "-version" olmalı)
+#!/bin/bash
+sudo apt update
+sudo apt upgrade  -y
 
 
-# jenkins kurulumu
-sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \  # Jenkins repo key dosyasını indirir
-https://pkg.jenkins.io/debian/jenkins.io-2026.key  # Jenkins resmi GPG key kaynağı
-
-echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \  # Paket kaynağını sistem repository listesine ekler
-https://pkg.jenkins.io/debian binary/ | sudo tee \  # Jenkins Debian repository adresi
-/etc/apt/sources.list.d/jenkins.list > /dev/null  # Repo listesini dosyaya yazar
-
-sudo apt update  # Jenkins repo eklendiği için paket listesi tekrar güncellenir
-sudo apt install jenkins -y  # Jenkins CI/CD server kurulumu yapılır
-sudo systemctl enable jenkins  # Jenkins servisi sistem açılışında otomatik başlatılır
-sudo systemctl start jenkins  # Jenkins servisi hemen başlatılır
-sudo systemctl status jenkins  # Jenkins servis durumunu kontrol eder
+#java
+sudo apt install openjdk-21-jdk  -y
+/usr/bin/java –version
 
 
-# docker kurulumu
-sudo apt-get update  # Paket listesi güncellenir (Docker kurulumu öncesi)
-sudo apt-get install docker.io -y  # Docker engine kurulumu yapılır
-sudo usermod -a -G docker $USER  # Mevcut kullanıcıyı docker grubuna ekler (sudo’suz docker kullanımı için)
-#sudo usermod -aG docker ubuntu  # Alternatif kullanıcı ekleme (ubuntu user için)
-sudo usermod -aG docker jenkins  # Jenkins kullanıcısına docker yetkisi verir (CI pipeline için)
-newgrp docker  # Grup değişikliğini aktif eder (oturum yeniler)
-sudo chmod 777 /var/run/docker.sock  # Docker socket’e full erişim verir (güvenlik açısından zayıf ama pratik çözüm)
+#jenkins 8080
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian/jenkins.io-2026.key
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt update
+sudo apt install jenkins   -y
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+sudo systemctl status jenkins
 
 
-# sonarqube container çalıştırma
-docker run -d --name sonar -p 9000:9000 --restart unless-stopped sonarqube:latest
-# SonarQube container’ını arka planda çalıştırır (code quality analysis aracı)
+#docker
+sudo apt-get update
+sudo apt-get install docker.io -y
+sudo usermod -a -G docker $USER
+#sudo usermod -aG docker ubuntu
+sudo usermod -aG docker jenkins
+newgrp docker
+sudo chmod 777 /var/run/docker.sock
 
-# Bilgisayar açıldığında container yönetimi notları
-# docker ps -a  # Tüm containerları listeler
-# docker start SONAR_CONTAINER_ID  # Duran container’ı başlatır
 
-# alternatif run komutu (multi-line format)
-# docker run -d
+#sonarqube  9000
+docker run -d    --name sonar    -p 9000:9000        --restart unless-stopped      sonarqube:latest
+
+# Bilgisayar acildigida Docker'in uzerinde calisan sonarqube containerlarıni otomatik çalıştırma yapmazsak bizzat calistirmak zorunda kaliriz..
+# docker ps -a
+# docker start SONAR_CONTAINER_ID
+
+#docker run -d
 #  --name sonarqube \
 #  -p 9000:9000 \
 #  --restart unless-stopped \
 #  sonarqube:latest
 
 
-# trivy kurulumu (container vulnerability scanner)
-sudo apt-get install wget apt-transport-https gnupg lsb-release -y  # Gerekli bağımlılıkları kurar
+#trivy
+sudo apt-get install wget apt-transport-https gnupg lsb-release  -y
 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-# Trivy GPG key indirir ve sisteme ekler
-
 echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-# Trivy repository sistem kaynaklarına eklenir
-
-sudo apt-get update  # Yeni repo eklendiği için paket listesi güncellenir
-sudo apt-get install trivy -y  # Trivy vulnerability scanner kurulur
+sudo apt-get update
+sudo apt-get install trivy  -y
 
 
-# curl kurulumu
-sudo apt install curl  # HTTP istekleri yapmak için curl aracı kurulur
+#curl
+sudo apt install curl
 
 
-# aws cli v2 kurulumu
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"  # AWS CLI installer indirilir
-sudo apt install unzip  # ZIP dosyalarını açmak için unzip kurulur
-unzip awscliv2.zip  # AWS CLI zip dosyası açılır
-sudo ./aws/install  # AWS CLI sistem kurulumunu yapar
+#aws cli v2
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt install unzip
+unzip awscliv2.zip
+sudo ./aws/install
 
 
-# kubectl kurulumu (Kubernetes CLI)
-curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
-# kubectl binary dosyası indirilir (Kubernetes yönetim aracı)
-
+#kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-# kubectl sistem PATH’e eklenir
 
 
-# eksctl kurulumu (EKS cluster yönetim aracı)
+#eksctl
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-# eksctl sıkıştırılmış paket indirip açar
-
-cd /tmp  # Geçici dizine geçilir
-sudo mv /tmp/eksctl /bin  # eksctl binary sistem PATH’e taşınır
+cd /tmp
+sudo mv /tmp/eksctl /bin
 
 
-# sistem güncellemesi
-sudo apt update  # Paket listesi güncellenir
-sudo apt upgrade -y  # Sistem tekrar güncellenir
+# EKS nodeları burada kurulu değil.
+sudo apt update
+sudo apt upgrade -y
 
-# EKS cluster oluşturma notları
-# eksctl create cluster --name my-workspace-cluster \
+#  EKSyi kuracak olan makineye admin rolü vermek lazım.
+#  EKSyi de Terraform üzerinden kuruyoruz. En az 1 node gerekli.
+#eksctl create cluster --name my-workspace-cluster \
 # --region us-east-1 \
 # --node-type t3.xlarge \
-# --nodes 2  # 2 node’lu Kubernetes cluster oluşturur
+# --nodes 2
 
 
-### Helm kurulumu (Kubernetes package manager)
-# curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-# chmod 700 get_helm.sh  # Script’e çalıştırma izni verir
-# ./get_helm.sh  # Helm kurulumunu başlatır
-# helm version  # Kurulum doğrulama
+### EKS cluster'ına bağlanmak için kubeconfig dosyasını kopyalayalım.
+#mkdir -p ~/.kube
+#cp /home/ubuntu/.kube/config ~/.kube/config
+#chown $(id -u):$(id -g) ~/.kube/config
 
-# helm repo add stable https://charts.helm.sh/stable  # Stable Helm repo eklenir
-# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts  # Prometheus repo eklenir
 
-# kubectl create namespace prometheus  # Prometheus için namespace oluşturulur
-# helm install stable prometheus-community/kube-prometheus-stack -n prometheus  # Monitoring stack kurulumu
-# kubectl get pods -n prometheus  # Pod’ların durumunu kontrol eder
+### Helm kurulumu
+#curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+#chmod 700 get_helm.sh
+#./get_helm.sh
+#helm repo add stable https://charts.helm.sh/stable
+#helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#helm repo update
+#helm version
+
+### Prometheus kurulumu - K8s Pod'un içine kurulacak.
+#kubectl create namespace prometheus
+#helm install stable prometheus-community/kube-prometheus-stack -n prometheus
+#kubectl get pods -n prometheus
+
 
 
 ### ArgoCD kurulumu
-# (burada manifest veya helm ile GitOps deployment yapılır)
 
-
-# makineyi yeniden başlatma (son adım)
-sudo reboot  # Sunucuyu yeniden başlatır (tüm kurulumları finalize eder)
+# makineyi yeniden baslatma en sonda olacak.
+ sudo reboot
