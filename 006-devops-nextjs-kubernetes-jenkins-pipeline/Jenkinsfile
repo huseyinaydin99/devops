@@ -10,10 +10,10 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
         APP_NAME = "006-devops-nextjs-kubernetes-jenkins-pipeline"  // Uygulama adı değişkene atanır
         RELEASE = "1.0.${env.BUILD_NUMBER}"  // Her build için versiyon numarası oluşturulur
         DOCKER_USER = "huseyin11"  // Docker Hub kullanıcı adı belirlenir
-        DOCKER_PASS = 'TOKEN_ID_DOCKER'  // Docker erişim token credential ID olarak tanımlanır
+        DOCKER_PASS = 'DockerHubTokenForJenkinsText'  // Docker erişim token credential ID olarak tanımlanır
         IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"  // Docker image adı oluşturulur
         IMAGE_TAG = "${RELEASE}"  // Docker image tag’i build numarasına göre belirlenir
-        SCANNER_HOME = tool "sonar-scanner"  // SonarQube scanner path’i alınır
+        SCANNER_HOME = tool "SonarQubeScanner"  // SonarQube scanner path’i alınır
     }
 
     stages {  // CI/CD pipeline aşamaları başlar
@@ -24,23 +24,39 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }
 
-        stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {  // GitHub reposundan kod çekilir
+        /*stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {  // GitHub reposundan kod çekilir
             steps {
                 checkout scmGit(
-                    branches: [[name: '*/main']],  // Main branch seçilir
+                    branches: [[name: '/main']],  // Main branch seçilir
                     extensions: [],  // Ek Git extension kullanılmaz
-                    userRemoteConfigs: [[url: 'https://github.com/huseyinaydin99/006-devops-nextjs-kubernetes-jenkins-pipeline']]  // Repo URL’si
+                    userRemoteConfigs: [[url: 'https://github.com/huseyinaydin99/devops/006-devops-nextjs-kubernetes-jenkins-pipeline']]  // Repo URL’si
                 )
+            }
+        }*/
+
+        stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {
+            steps {
+                script {
+                    sh """
+                    git init
+                    git remote add origin https://github.com/huseyinaydin99/devops.git
+                    git config core.sparseCheckout true
+                    echo "006-devops-nextjs-kubernetes-jenkins-pipeline/*" >> .git/info/sparse-checkout
+                    git pull origin main
+                    """
+                }
             }
         }
 
         stage('📦 Bağımlılık Kurulumu | Install Dependencies') {  // Node.js bağımlılıkları yüklenir
             steps {
                 script {
-                    if (isUnix()) {  // Linux ortamı kontrol edilir
-                        sh "npm install"  // npm paketleri yüklenir
-                    } else {
-                        bat "npm install"  // Windows ortamı için npm install çalıştırılır
+                    dir('006-devops-nextjs-kubernetes-jenkins-pipeline') {
+                        if (isUnix()) {
+                            sh "npm install"
+                        } else {
+                            bat "npm install"
+                        }
                     }
                 }
             }
@@ -49,8 +65,8 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
         stage('🔍 Kod Analizi | SonarQube Scan') {  // Kod kalitesi analizi yapılır
             steps {
                 script {
-                    def scannerHome = tool 'sonar-scanner'  // Sonar scanner yolu alınır
-                    withSonarQubeEnv('SonarTokenForJenkins') {  // SonarQube bağlantısı açılır
+                    def scannerHome = tool 'SonarQubeScanner'  // Sonar scanner yolu alınır
+                    withSonarQubeEnv('MySonarQubeServer') {  // SonarQube bağlantısı açılır
                         sh """
                         ${scannerHome}/bin/sonar-scanner \  // Sonar scanner çalıştırılır
                         -Dsonar.projectKey=006-devops-nextjs-kubernetes-jenkins-pipeline \  // Proje anahtarı
@@ -64,7 +80,7 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
         stage("🚦 Kalite Kapısı | Quality Gate") {  // SonarQube kalite kontrolü yapılır
             steps {
                 script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'SonarTokenForJenkins'  // Quality gate sonucu beklenir
+                    waitForQualityGate abortPipeline: false, credentialsId: 'MySonarQubeServer'  // Quality gate sonucu beklenir
                 }
             }
         }
@@ -106,10 +122,12 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
         stage("🚀 Docker Build & Push | Docker İmaj Build ve Push") {  // Docker image build edilip push edilir
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'dockerhub', toolName: 'docker') {  // Docker Hub login yapılır
+                    withDockerRegistry(credentialsId: 'DockerHubToken4Jenkins', toolName: 'docker') {  // Docker Hub login yapılır
+                        dir('006-devops-nextjs-kubernetes-jenkins-pipeline') {
                         sh "docker build -t 006-devops-nextjs-kubernetes-jenkins-pipeline:latest . "  // Image build edilir
                         sh "docker tag 006-devops-nextjs-kubernetes-jenkins-pipeline huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest "  // Tag eklenir
                         sh "docker push huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest "  // Docker Hub’a push edilir
+                    }
                     }
                 }
             }
@@ -121,6 +139,7 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }
 
+        /*
         stage('☸️ Kubernetes Deploy | Kubernetes’e Dağıtım') {  // Uygulama Kubernetes’e deploy edilir
             steps {
                 script {
@@ -142,9 +161,9 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
                 }
             }
         }
-
+*/
     }
-
+/*
     post {  // Pipeline sonrası işlemler başlar
         always {  // Her durumda çalışır (başarılı/başarısız)
             emailext attachLog: true,  // Build log’u e-posta’ya eklenir
@@ -156,4 +175,5 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
                 attachmentsPattern: 'trivyfs.txt,trivyimage.txt'  // Scan raporları eklenir
         }
     }
+    */
 }
