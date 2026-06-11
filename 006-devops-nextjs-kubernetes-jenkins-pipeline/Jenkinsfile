@@ -139,6 +139,24 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }
 
+        stage("🚀 Docker Run | Container Deploy") {
+            steps {
+                script {
+                    sh """
+                    docker stop nextjs-app || true
+                    docker rm nextjs-app || true
+
+                    docker pull huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest
+
+                    docker run -d \
+                    --name nextjs-app \
+                    -p 3000:3000 \
+                    huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest
+                    """
+                }
+            }
+        }
+
         /*
         stage('☸️ Kubernetes Deploy | Kubernetes’e Dağıtım') {  // Uygulama Kubernetes’e deploy edilir
             steps {

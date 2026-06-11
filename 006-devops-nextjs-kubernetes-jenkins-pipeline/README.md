@@ -20,6 +20,22 @@ Monitoring:      (Prometheus, Grafana, ELK)
 
 ---
 
+## Ekran Görüntüleri
+
+![1](ekran_goruntuleri/1.png)
+
+![2](ekran_goruntuleri/2.png)
+
+![3](ekran_goruntuleri/3.png)
+
+![4](ekran_goruntuleri/4.png)
+
+![5](ekran_goruntuleri/5.png)
+
+![6](ekran_goruntuleri/6.png)
+
+---
+
 IAM -> Users -> mydemouser
 
 AWS'de yeni bir kullanıcı oluşturuyoruz.
