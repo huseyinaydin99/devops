@@ -3,7 +3,6 @@ import {
     Database,
     Cloud,
     Activity,
-    Github,
     ArrowRight,
 } from "lucide-react";
 
@@ -61,7 +60,6 @@ export default function Home() {
                             </button>
 
                             <button className="flex items-center gap-2 rounded-xl border border-zinc-800 px-6 py-3 hover:border-zinc-600 transition">
-                                <Github size={18} />
                                 Kaynak Kod
                             </button>
                         </div>
