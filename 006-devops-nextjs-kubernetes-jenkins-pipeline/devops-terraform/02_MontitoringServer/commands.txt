@@ -8,3 +8,63 @@
 
 promtool check config /etc/prometheus/prometheus.yml
 curl -X POST http://localhost:9090/-/reload
+
+
+
+Sistem dolarsa dikkatli kullan!;
+
+# =========================
+# 1) Docker temizliği
+# =========================
+docker system prune -a -f
+docker volume prune -f
+docker builder prune -a -f
+
+# containerd snapshot temizliği (kritik disk şişmesi fix)
+sudo rm -rf /var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/*
+
+# =========================
+# 2) Jenkins workspace & cache temizliği
+# =========================
+sudo rm -rf /var/lib/jenkins/workspace/*
+sudo rm -rf /var/lib/jenkins/.npm
+sudo rm -rf /var/lib/jenkins/.sonar
+sudo rm -rf /var/lib/jenkins/.cache
+sudo rm -rf /var/lib/jenkins/.sonar/cache
+
+# =========================
+# 3) System cache temizliği
+# =========================
+sudo apt clean
+sudo apt autoremove -y
+
+# =========================
+# 4) SERVİSLERİ YENİDEN BAŞLAT
+# =========================
+sudo systemctl restart docker
+sudo systemctl restart jenkins
+
+# =========================
+# 5) kontrol
+# =========================
+df -h
+docker system df
+systemctl status docker --no-pager
+systemctl status jenkins --no-pager
+
+
+
+
+
+
+containerd bozulması durumunda!
+---
+
+systemctl stop docker
+systemctl stop containerd
+
+rm -rf /var/lib/containerd
+rm -rf /var/lib/docker
+
+systemctl start containerd
+systemctl start docker

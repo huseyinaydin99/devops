@@ -181,17 +181,91 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
         }
 */
     }
-/*
-    post {  // Pipeline sonrası işlemler başlar
-        always {  // Her durumda çalışır (başarılı/başarısız)
-            emailext attachLog: true,  // Build log’u e-posta’ya eklenir
-                subject: "'${currentBuild.result}'",  // Mail konusu build sonucu olur
-                body: "Project: ${env.JOB_NAME}<br/>" +  // Proje adı mail gövdesine eklenir
-                    "Build Number: ${env.BUILD_NUMBER}<br/>" +  // Build numarası eklenir
-                    "URL: ${env.BUILD_URL}<br/>",  // Build URL’i eklenir
-                to: 'YOUR_MAIL@gmail.com',  // Mail gönderilecek adres
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'  // Scan raporları eklenir
+
+    post {
+        always {
+            emailext(
+                attachLog: true,
+                mimeType: 'text/html',
+                subject: "🚀 [${currentBuild.result}] CI/CD PIPELINE REPORT | ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+
+                body: """
+                <html>
+                <body style="margin:0; padding:0; background:#0b1220; font-family:Arial;">
+
+                <div style="max-width:720px; margin:auto; padding:25px;">
+
+                    <!-- HEADER -->
+                    <div style="background:linear-gradient(90deg,#0ea5e9,#22c55e); padding:20px; border-radius:14px; color:white;">
+                        <h1 style="margin:0;">🚀 PIPELINE EXECUTION REPORT</h1>
+                        <p style="margin:5px 0 0;">Real-time DevOps Monitoring Intelligence</p>
+                    </div>
+
+                    <!-- STATUS CARD -->
+                    <div style="margin-top:20px; background:#111827; padding:20px; border-radius:14px; border:1px solid #1f2937;">
+
+                        <h2 style="color:#38bdf8;">📊 Build Overview</h2>
+
+                        <p>📦 Project: <b>${env.JOB_NAME}</b></p>
+                        <p>🔢 Build Number: <b>#${env.BUILD_NUMBER}</b></p>
+
+                        <p>⚡ Status:
+                            <span style="
+                                padding:6px 12px;
+                                border-radius:8px;
+                                background:${currentBuild.result == 'SUCCESS' ? '#16a34a' : '#dc2626'};
+                                color:white;
+                                font-weight:bold;">
+                                ${currentBuild.result}
+                            </span>
+                        </p>
+
+                    </div>
+
+                    <!-- METRICS PANEL -->
+                    <div style="margin-top:20px; background:#0f172a; padding:20px; border-radius:14px; border:1px solid #1f2937;">
+
+                        <h2 style="color:#fbbf24;">📡 Pipeline Intelligence</h2>
+
+                        <ul style="color:#cbd5e1; line-height:1.8;">
+                            <li>🕒 Execution Time: ${currentBuild.durationString}</li>
+                            <li>🌐 Jenkins URL: <a style="color:#60a5fa;" href="${env.BUILD_URL}">Open Build</a></li>
+                            <li>🧪 Trivy FS Scan: Attached</li>
+                            <li>🐳 Image Security Scan: Attached</li>
+                            <li>📦 Artifact Status: Stored</li>
+                        </ul>
+
+                    </div>
+
+                    <!-- ALERT SECTION -->
+                    <div style="margin-top:20px; padding:20px; border-radius:14px;
+                        background:${currentBuild.result == 'SUCCESS' ? '#052e16' : '#450a0a'};
+                        border:1px solid ${currentBuild.result == 'SUCCESS' ? '#16a34a' : '#dc2626'};">
+
+                        <h2 style="color:white;">🚨 System Verdict</h2>
+
+                        <p style="color:#e5e7eb;">
+                            ${currentBuild.result == 'SUCCESS'
+                                ? 'Pipeline executed successfully. System stable. No anomalies detected. 🟢'
+                                : 'Pipeline failure detected. Immediate investigation required. 🔴'}
+                        </p>
+
+                    </div>
+
+                    <!-- FOOTER -->
+                    <div style="margin-top:20px; text-align:center; color:#64748b; font-size:12px;">
+                        DevOps Intelligence Layer • Jenkins Automated Reporting System
+                    </div>
+
+                </div>
+
+                </body>
+                </html>
+                """,
+
+                to: 'YOUR_MAIL@gmail.com',
+                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+            )
         }
     }
-    */
 }
