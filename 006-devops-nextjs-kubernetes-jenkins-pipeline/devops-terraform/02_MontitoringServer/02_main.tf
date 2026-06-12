@@ -1,7 +1,43 @@
+# =========================
+# SSH KEY
+# =========================
+
+resource "tls_private_key" "ssh" {
+  algorithm = "RSA"
+}
+
+resource "aws_key_pair" "monitoring_key" {
+  key_name   = "my-monitoring-key"
+  public_key = tls_private_key.ssh.public_key_openssh
+}
+
+resource "local_file" "pem" {
+  content         = tls_private_key.ssh.private_key_pem
+  filename        = "${path.module}/my-monitoring-key.pem"
+  file_permission = "0400"
+}
+
+
+# Elastic IP (Sabit Public IP)
+resource "aws_eip" "monitoring_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name = "My-Monitoring-Server-EIP"
+  }
+}
+
+# Elastic IP'yi EC2'ye bağla
+resource "aws_eip_association" "monitoring_eip_assoc" {
+  instance_id   = aws_instance.web.id
+  allocation_id = aws_eip.monitoring_eip.id
+}
+
 resource "aws_instance" "web" {  # Monitoring server için EC2 instance oluşturuluyor
   ami = "ami-0b6c6ebed2801a5cb"  # Kullanılacak işletim sistemi imajı (Ubuntu/Amazon Linux AMI)
   instance_type = "t3.xlarge"    # Instance tipi (CPU + RAM gücü yüksek orta seviye VM)
-  key_name = "My-Ubuntu-Key"     # SSH ile erişim için kullanılacak key pair
+  key_name = aws_key_pair.monitoring_key.key_name    # SSH ile erişim için kullanılacak key pair
+  associate_public_ip_address = true
   vpc_security_group_ids = [aws_security_group.My-Monitoring-Server-SG.id]  # Güvenlik grubu (port erişim kuralları)
   user_data = templatefile("./03_install.sh", {})  # İlk açılışta çalışacak kurulum scripti (Prometheus, Grafana vb.)
 
@@ -50,7 +86,7 @@ resource "aws_security_group" "My-Monitoring-Server-SG" {  # Monitoring server i
 resource "aws_budgets_budget" "budget-ec2" {  # AWS maliyet kontrol (budget alarm sistemi)
   name = "my-monthly-budget"  # Budget adı
   budget_type = "COST"  # Bütçe tipi: maliyet takibi
-  limit_amount = "50"  # Aylık maksimum harcama limiti (50 USD)
+  limit_amount = "5"  # Aylık maksimum harcama limiti (5 USD)
   limit_unit = "USD"  # Para birimi
   time_period_start = "2026-03-01_00:00"  # Bütçenin başlangıç tarihi
   time_unit = "MONTHLY"  # Aylık bazda hesaplama yapılır
