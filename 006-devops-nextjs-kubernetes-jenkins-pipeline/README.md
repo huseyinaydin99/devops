@@ -34,6 +34,12 @@ Monitoring:      (Prometheus, Grafana, ELK)
 
 ![6](ekran_goruntuleri/6.png)
 
+![7](ekran_goruntuleri/7.png)
+
+![8](ekran_goruntuleri/8.png)
+
+![9](ekran_goruntuleri/9.png)
+
 ---
 
 IAM -> Users -> mydemouser
