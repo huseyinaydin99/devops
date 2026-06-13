@@ -2,9 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: 006-devops-nextjs-kubernetes-jenkins-pipeline
+  name: devops-006-nextjs-kubernetes-jenkins-pipeline
   labels:
-    app: 006-devops-nextjs-kubernetes-jenkins-pipeline
+    app: devops-006-nextjs-kubernetes-jenkins-pipeline
     team: frontend
 
 spec:
@@ -12,18 +12,18 @@ spec:
 
   selector:
     matchLabels:
-      app: 006-devops-nextjs-kubernetes-jenkins-pipeline
+      app: devops-006-nextjs-kubernetes-jenkins-pipeline
 
   template:
     metadata:
       labels:
-        app: 006-devops-nextjs-kubernetes-jenkins-pipeline
+        app: devops-006-nextjs-kubernetes-jenkins-pipeline
 
     spec:
       terminationGracePeriodSeconds: 30
 
       containers:
-        - name: 006-devops-nextjs-kubernetes-jenkins-pipeline
+        - name: devops-006-nextjs-kubernetes-jenkins-pipeline
           image: huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest
           imagePullPolicy: Always
 
