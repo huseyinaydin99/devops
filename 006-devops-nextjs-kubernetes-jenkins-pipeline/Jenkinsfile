@@ -157,16 +157,15 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }
 
-        /*
         stage('☸️ Kubernetes Deploy | Kubernetes’e Dağıtım') {  // Uygulama Kubernetes’e deploy edilir
             steps {
                 script {
-                    dir('kubernetes') {  // Kubernetes dosyalarının olduğu klasöre girilir
+                    dir('006-devops-nextjs-kubernetes-jenkins-pipeline/kubernetes') {  // Kubernetes dosyalarının olduğu klasöre girilir
                         withKubeConfig(  // Kubernetes cluster bağlantısı yapılır
                             caCertificate: '',  // CA sertifikası (boş bırakılmış)
                             clusterName: '',  // Cluster adı (boş bırakılmış)
                             contextName: '',  // Context adı (boş bırakılmış)
-                            credentialsId: 'kubernetes',  // Kubernetes credential ID
+                            credentialsId: 'IdKubernetes',  // Kubernetes credential ID
                             namespace: '',  // Namespace (default kullanılabilir)
                             restrictKubeConfigAccess: false,  // kubeconfig erişimi kısıtlanmaz
                             serverUrl: ''  // Kubernetes API URL
@@ -179,15 +178,14 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
                 }
             }
         }
-*/
-    }
+
 
     post {
         always {
             emailext(
                 attachLog: true,
                 mimeType: 'text/html',
-                subject: "🚀 [${currentBuild.result}] CI/CD PIPELINE REPORT | ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "🚀 [${currentBuild.result}] CI/CD PIPELINE RAPORU | ${env.JOB_NAME} #${env.BUILD_NUMBER}",
 
                 body: """
                 <html>
@@ -195,21 +193,18 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
 
                 <div style="max-width:720px; margin:auto; padding:25px;">
 
-                    <!-- HEADER -->
                     <div style="background:linear-gradient(90deg,#0ea5e9,#22c55e); padding:20px; border-radius:14px; color:white;">
-                        <h1 style="margin:0;">🚀 PIPELINE EXECUTION REPORT</h1>
-                        <p style="margin:5px 0 0;">Real-time DevOps Monitoring Intelligence</p>
+                        <h1 style="margin:0;">🚀 PIPELINE ÇALIŞMA RAPORU</h1>
+                        <p style="margin:5px 0 0;">Gerçek zamanlı DevOps izleme sistemi</p>
                     </div>
 
-                    <!-- STATUS CARD -->
                     <div style="margin-top:20px; background:#111827; padding:20px; border-radius:14px; border:1px solid #1f2937;">
+                        <h2 style="color:#38bdf8;">📊 Build Özeti</h2>
 
-                        <h2 style="color:#38bdf8;">📊 Build Overview</h2>
+                        <p>📦 Proje: <b>${env.JOB_NAME}</b></p>
+                        <p>🔢 Build Numarası: <b>#${env.BUILD_NUMBER}</b></p>
 
-                        <p>📦 Project: <b>${env.JOB_NAME}</b></p>
-                        <p>🔢 Build Number: <b>#${env.BUILD_NUMBER}</b></p>
-
-                        <p>⚡ Status:
+                        <p>⚡ Durum:
                             <span style="
                                 padding:6px 12px;
                                 border-radius:8px;
@@ -219,42 +214,31 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
                                 ${currentBuild.result}
                             </span>
                         </p>
-
                     </div>
 
-                    <!-- METRICS PANEL -->
                     <div style="margin-top:20px; background:#0f172a; padding:20px; border-radius:14px; border:1px solid #1f2937;">
-
-                        <h2 style="color:#fbbf24;">📡 Pipeline Intelligence</h2>
+                        <h2 style="color:#fbbf24;">📡 Pipeline Bilgileri</h2>
 
                         <ul style="color:#cbd5e1; line-height:1.8;">
-                            <li>🕒 Execution Time: ${currentBuild.durationString}</li>
-                            <li>🌐 Jenkins URL: <a style="color:#60a5fa;" href="${env.BUILD_URL}">Open Build</a></li>
-                            <li>🧪 Trivy FS Scan: Attached</li>
-                            <li>🐳 Image Security Scan: Attached</li>
-                            <li>📦 Artifact Status: Stored</li>
+                            <li>🕒 Çalışma Süresi: ${currentBuild.durationString}</li>
+                            <li>🌐 Jenkins URL: <a style="color:#60a5fa;" href="${env.BUILD_URL}">Build’i Aç</a></li>
+                            <li>🧪 Trivy FS Taraması: Eklendi</li>
+                            <li>🐳 Image Güvenlik Taraması: Eklendi</li>
                         </ul>
-
                     </div>
 
-                    <!-- ALERT SECTION -->
                     <div style="margin-top:20px; padding:20px; border-radius:14px;
                         background:${currentBuild.result == 'SUCCESS' ? '#052e16' : '#450a0a'};
                         border:1px solid ${currentBuild.result == 'SUCCESS' ? '#16a34a' : '#dc2626'};">
 
-                        <h2 style="color:white;">🚨 System Verdict</h2>
+                        <h2 style="color:white;">🚨 Sistem Durumu</h2>
 
                         <p style="color:#e5e7eb;">
                             ${currentBuild.result == 'SUCCESS'
-                                ? 'Pipeline executed successfully. System stable. No anomalies detected. 🟢'
-                                : 'Pipeline failure detected. Immediate investigation required. 🔴'}
+                                ? 'Pipeline başarıyla çalıştı. Sistem stabil. 🟢'
+                                : 'Pipeline hatası tespit edildi. Acil müdahale gerekli. 🔴'}
                         </p>
 
-                    </div>
-
-                    <!-- FOOTER -->
-                    <div style="margin-top:20px; text-align:center; color:#64748b; font-size:12px;">
-                        DevOps Intelligence Layer • Jenkins Automated Reporting System
                     </div>
 
                 </div>

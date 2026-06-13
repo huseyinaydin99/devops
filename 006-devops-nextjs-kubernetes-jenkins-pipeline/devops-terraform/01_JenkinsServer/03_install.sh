@@ -82,7 +82,7 @@ sudo apt upgrade -y
 #  EKSyi kuracak olan makineye admin rolü vermek lazım.
 #  EKSyi de Terraform üzerinden kuruyoruz. En az 1 node gerekli.
 #eksctl create cluster --name my-workspace-cluster \
-# --region us-east-1 \
+# --region us-east-2 \
 # --node-type t3.xlarge \
 # --nodes 2
 

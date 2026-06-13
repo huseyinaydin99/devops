@@ -1,38 +1,36 @@
-apiVersion: apps/v1  # Kubernetes Deployment API versiyonu (apps controller kullanılır)
-kind: Deployment  # Kaynak tipi: Deployment (pod’ları yönetir, versiyonlar ve ölçekler)
+apiVersion: apps/v1
+kind: Deployment
 
-metadata:  # Kaynağın kimlik bilgileri ve etiketleri
-  name: 006-devops-nextjs-kubernetes-jenkins-pipeline  # Deployment adı (cluster içinde benzersiz isim)
-  labels:  # Deployment seviyesinde etiketler
-    app: 006-devops-nextjs-kubernetes-jenkins-pipeline  # Uygulama etiketi (selector ile eşleşir)
-    team: frontend  # Takım bilgisi (organizasyon/filtreleme için)
+metadata:
+  name: 006-devops-nextjs-kubernetes-jenkins-pipeline
+  labels:
+    app: 006-devops-nextjs-kubernetes-jenkins-pipeline
+    team: frontend
 
-spec:  # Deployment’ın çalışma kuralları
-  replicas: 2  # Aynı uygulamadan 2 pod çalıştır (yüksek erişilebilirlik)
+spec:
+  replicas: 2
 
-  selector:  # Hangi pod’ları yöneteceğini belirler
+  selector:
     matchLabels:
-      app: 006-devops-nextjs-kubernetes-jenkins-pipeline  # Bu label’a sahip pod’ları seçer
+      app: 006-devops-nextjs-kubernetes-jenkins-pipeline
 
-  template:  # Pod şablonu (oluşturulacak container yapısı)
+  template:
     metadata:
       labels:
-        app: 006-devops-nextjs-kubernetes-jenkins-pipeline  # Pod’lara verilecek label
+        app: 006-devops-nextjs-kubernetes-jenkins-pipeline
 
-    spec:  # Pod içi çalışma tanımı
-      terminationGracePeriodSeconds: 30  # Pod kapanırken 30 saniye grace period (temiz shutdown) Grace period, Kubernetes’te bir pod kapatılırken process’lerin düzgün şekilde kapanması için verilen bekleme süresidir.
+    spec:
+      terminationGracePeriodSeconds: 30
 
-      containers:  # Pod içinde çalışacak container listesi
-        - name: 006-devops-nextjs-kubernetes-jenkins-pipeline  # Container adı
-          image: huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest  # Docker image (registry’den çekilir)
-          imagePullPolicy: "Always"  # Her deploy’da image yeniden çekilir (cache kullanılmaz)
+      containers:
+        - name: 006-devops-nextjs-kubernetes-jenkins-pipeline
+          image: huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest
+          imagePullPolicy: Always
 
-          resources:  # Container resource limitleri
-            limits:  # Maksimum kaynak sınırları
-              memory: "1000Mi"  # RAM limiti 1 GB
-              cpu: "1000m"  # CPU limiti 1 core (1000 millicore) CPU limiti, fiziksel çekirdeği sana özel yapmaz; sadece o çekirdeğin işlem süresinden belirlediğin kadar pay kullanmanı sınırlar.
-              # Pod’a verilen işlem gücünü cpu: "1000m" gibi değerlerden anlarsın; 1000m = 1 tam CPU çekirdeği, 500m = yarım çekirdek demektir.
-              # Gerçekte ne kadar kullandığını ise kubectl top pod veya Prometheus/Grafana metrikleriyle görerek takip edersin.
+          resources:
+            limits:
+              memory: "1000Mi"
+              cpu: "1000m"
 
-          ports:  # Container port açılışları
-            - containerPort: 3000  # Uygulamanın dinlediği port (Next.js default 3000)
+          ports:
+            - containerPort: 3000
