@@ -16,7 +16,7 @@ export default function Home() {
                 {/* Navbar */}
                 <nav className="flex items-center justify-between py-8">
                     <div>
-                        <h2 className="text-xl font-bold">Bulut Yerel Platform</h2>
+                        <h2 className="text-xl font-bold">Bulut Yerel Platform Test</h2>
                     </div>
 
                     <div className="flex gap-4">
