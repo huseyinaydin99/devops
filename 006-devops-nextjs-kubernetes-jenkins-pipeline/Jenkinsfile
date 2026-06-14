@@ -1,52 +1,27 @@
-pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
-    agent any  // Pipeline herhangi bir Jenkins agent üzerinde çalışabilir
+pipeline {
+    agent any
 
-    tools {  // Kullanılacak araçlar burada tanımlanır
-        jdk 'Java21'  // Java 21 JDK ortamı kullanılır
-        nodejs 'NodeJS24'  // Node.js 24 runtime ortamı kullanılır
+    tools {
+        jdk 'JDK21'
+        nodejs 'NodeJS24'
     }
 
-    environment {  // Pipeline genel değişkenleri tanımlanır
-        APP_NAME = "006-devops-nextjs-kubernetes-jenkins-pipeline"  // Uygulama adı değişkene atanır
-        RELEASE = "1.0.${env.BUILD_NUMBER}"  // Her build için versiyon numarası oluşturulur
-        DOCKER_USER = "huseyin11"  // Docker Hub kullanıcı adı belirlenir
-        DOCKER_PASS = 'DockerHubTokenForJenkinsText'  // Docker erişim token credential ID olarak tanımlanır
-        IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"  // Docker image adı oluşturulur
-        IMAGE_TAG = "${RELEASE}"  // Docker image tag’i build numarasına göre belirlenir
-        SCANNER_HOME = tool "SonarQubeScanner"  // SonarQube scanner path’i alınır
+    environment {
+        APP_NAME = "006-devops-nextjs-kubernetes-jenkins-pipeline"
+        RELEASE = "1.0.${env.BUILD_NUMBER}"
+        DOCKER_USER = "huseyin11"
+        DOCKER_PASS = 'DockerHubTokenForJenkinsText'
+        IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
+        IMAGE_TAG = "${RELEASE}"
+        SCANNER_HOME = tool "SonarQubeScanner"
     }
 
-    stages {  // CI/CD pipeline aşamaları başlar
-
-        stage('🧹 Workspace Temizleme | Clean Workspace') {  // Çalışma alanı temizlenir
+    stages {
+        stage('🧹 Workspace Temizleme | Clean Workspace') {
             steps {
-                cleanWs()  // Jenkins workspace içeriği silinir
+                cleanWs()
             }
         }
-
-        /*stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {  // GitHub reposundan kod çekilir
-            steps {
-                checkout scmGit(
-                    branches: [[name: '/main']],  // Main branch seçilir
-                    extensions: [],  // Ek Git extension kullanılmaz
-                    userRemoteConfigs: [[url: 'https://github.com/huseyinaydin99/devops/006-devops-nextjs-kubernetes-jenkins-pipeline']]  // Repo URL’si
-                )
-            }
-        }*/
-
-        /*stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {
-            steps {
-                script {
-                    sh """
-                    git init
-                    git remote add origin https://github.com/huseyinaydin99/devops.git
-                    git config core.sparseCheckout true
-                    echo "006-devops-nextjs-kubernetes-jenkins-pipeline/*" >> .git/info/sparse-checkout
-                    git pull origin main
-                    """
-                }
-            }
-        }*/
 
         stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {
             steps {
@@ -62,7 +37,7 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }
 
-        stage('📦 Bağımlılık Kurulumu | Install Dependencies') {  // Node.js bağımlılıkları yüklenir
+        stage('📦 Bağımlılık Kurulumu | Install Dependencies') {
             steps {
                 script {
                     dir('006-devops-nextjs-kubernetes-jenkins-pipeline') {
@@ -76,80 +51,56 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }
 
-        stage('🔍 Kod Analizi | SonarQube Scan') {  // Kod kalitesi analizi yapılır
+        stage('🔍 Kod Analizi | SonarQube Scan') {
             steps {
                 script {
-                    def scannerHome = tool 'SonarQubeScanner'  // Sonar scanner yolu alınır
-                    withSonarQubeEnv('MySonarQubeServer') {  // SonarQube bağlantısı açılır
+                    def scannerHome = tool 'SonarQubeScanner'
+
+                    withSonarQubeEnv('MySonarQubeServer') {
                         sh """
-                        ${scannerHome}/bin/sonar-scanner \  // Sonar scanner çalıştırılır
-                        -Dsonar.projectKey=006-devops-nextjs-kubernetes-jenkins-pipeline \  // Proje anahtarı
-                        -Dsonar.projectName=006-devops-nextjs-kubernetes-jenkins-pipeline  // Proje adı
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=${APP_NAME} \
+                        -Dsonar.projectName=${APP_NAME}
                         """
                     }
                 }
             }
         }
 
-        stage("🚦 Kalite Kapısı | Quality Gate") {  // SonarQube kalite kontrolü yapılır
+        stage("🛡️ FS Güvenlik Taraması | Trivy FS Scan") {
             steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'MySonarQubeServer'  // Quality gate sonucu beklenir
-                }
+                sh "trivy fs . > trivyfs.txt"
             }
         }
 
-        /*
-        stage('🐳 Docker Image Build') {  // Docker image build aşaması (pasif)
+        stage('🧽 Docker Image Temizleme | Docker Image Clean') {
             steps {
                 script {
                     if (isUnix()) {
-                        sh 'docker build -t huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest  .'  // Image build
+                        sh "docker image prune -f"
                     } else {
-                        bat 'docker build -t huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest  .'  // Windows build
-                    }
-                }
-            }
-        }
-        */
-
-        stage("🛡️ FS Güvenlik Taraması | Trivy FS Scan") {  // Dosya sistemi güvenlik taraması yapılır
-            steps {
-                script {
-                    sh "trivy fs . > trivyfs.txt"  // Proje dosyaları vulnerability scan edilir
-                }
-            }
-        }
-
-        stage('🧽 Docker Image Temizleme | Docker Image Clean') {  // Gereksiz Docker image’ları temizlenir
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh "docker image prune -f"  // Kullanılmayan image’lar silinir
-                    } else {
-                        bat "docker image prune -f"  // Windows için temizleme
+                        bat "docker image prune -f"
                     }
                 }
             }
         }
 
-        stage("🚀 Docker Build & Push | Docker İmaj Build ve Push") {  // Docker image build edilip push edilir
+        stage("🚀 Docker Build & Push | Docker İmaj Build ve Push") {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'DockerHubToken4Jenkins', toolName: 'docker') {  // Docker Hub login yapılır
+                    withDockerRegistry(credentialsId: 'DockerHubToken4Jenkins', toolName: 'docker') {
                         dir('006-devops-nextjs-kubernetes-jenkins-pipeline') {
-                        sh "docker build -t 006-devops-nextjs-kubernetes-jenkins-pipeline:latest . "  // Image build edilir
-                        sh "docker tag 006-devops-nextjs-kubernetes-jenkins-pipeline huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest "  // Tag eklenir
-                        sh "docker push huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest "  // Docker Hub’a push edilir
-                    }
+                            sh "docker build -t ${IMAGE_NAME}:latest ."
+                            sh "docker push ${IMAGE_NAME}:latest"
+                        }
                     }
                 }
             }
         }
 
-        stage("🔍 Image Güvenlik Taraması | Trivy Image Scan") {  // Docker image güvenlik taraması yapılır
+        stage("🔍 Image Güvenlik Taraması | Trivy Image Scan") {
             steps {
-                sh "trivy image 006-devops-nextjs-kubernetes-jenkins-pipeline:latest > trivyimage.txt"  // Image vulnerability scan edilir
+                sh "trivy image ${IMAGE_NAME}:latest > trivyimage.txt"
             }
         }
 
@@ -160,39 +111,37 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
                     docker stop nextjs-app || true
                     docker rm nextjs-app || true
 
-                    docker pull huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest
-
                     docker run -d \
                     --name nextjs-app \
                     -p 3000:3000 \
-                    huseyin11/006-devops-nextjs-kubernetes-jenkins-pipeline:latest
+                    ${IMAGE_NAME}:latest
                     """
                 }
             }
         }
 
-        stage('☸️ Kubernetes Deploy | Kubernetes’e Dağıtım') {  // Uygulama Kubernetes’e deploy edilir
+        stage('☸️ Kubernetes Deploy | Kubernetes’e Dağıtım') {
             steps {
                 script {
-                    dir('006-devops-nextjs-kubernetes-jenkins-pipeline/kubernetes') {  // Kubernetes dosyalarının olduğu klasöre girilir
-                        withKubeConfig(  // Kubernetes cluster bağlantısı yapılır
-                            caCertificate: '',  // CA sertifikası (boş bırakılmış)
-                            clusterName: '',  // Cluster adı (boş bırakılmış)
-                            contextName: '',  // Context adı (boş bırakılmış)
-                            credentialsId: 'IdKubernetes',  // Kubernetes credential ID
-                            namespace: '',  // Namespace (default kullanılabilir)
-                            restrictKubeConfigAccess: false,  // kubeconfig erişimi kısıtlanmaz
-                            serverUrl: ''  // Kubernetes API URL
+                    dir('006-devops-nextjs-kubernetes-jenkins-pipeline/kubernetes') {
+                        withKubeConfig(
+                            caCertificate: '',
+                            clusterName: '',
+                            contextName: '',
+                            credentialsId: 'IdKubernetes',
+                            namespace: '',
+                            restrictKubeConfigAccess: false,
+                            serverUrl: ''
                         ) {
-                            sh 'kubectl delete --all pods'  // Eski pod’lar silinir
-                            sh 'kubectl apply -f deployment.yml'  // Deployment uygulanır
-                            sh 'kubectl apply -f service.yml'  // Service uygulanır
+                            sh 'kubectl delete --all pods'
+                            sh 'kubectl apply -f deployment.yml'
+                            sh 'kubectl apply -f service.yml'
                         }
                     }
                 }
             }
         }
-
+    }
 
     post {
         always {
