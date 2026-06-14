@@ -44,7 +44,7 @@ export default function Home() {
                                 Terraform/Ansible
                             </span>
                             <br />
-                            Platform
+                            Platform - Test
                         </h1>
 
                         <p className="mt-8 max-w-2xl text-xl leading-relaxed text-zinc-400">
