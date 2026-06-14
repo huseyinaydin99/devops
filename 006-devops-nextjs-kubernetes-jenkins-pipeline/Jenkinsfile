@@ -90,9 +90,11 @@ pipeline {
         stage("🚀 Docker Build & Push | Docker İmaj Build ve Push") {
             steps {
                 script {
+                    def TAG = "1.0.${env.BUILD_NUMBER}"
                     withDockerRegistry(credentialsId: 'DockerHubToken4Jenkins', toolName: 'docker') {
                         dir('006-devops-nextjs-kubernetes-jenkins-pipeline') {
-                            sh "docker build -t ${IMAGE_NAME}:latest ."
+                            sh "docker build -t ${IMAGE_NAME}:${TAG} -t ${IMAGE_NAME}:latest ."
+                            sh "docker push ${IMAGE_NAME}:${TAG}"
                             sh "docker push ${IMAGE_NAME}:latest"
                         }
                     }
