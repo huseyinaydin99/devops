@@ -34,7 +34,7 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
             }
         }*/
 
-        /*stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {
+        stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {
             steps {
                 script {
                     sh """
@@ -45,20 +45,6 @@ pipeline {  // Jenkins CI/CD pipeline tanımı başlatılır
                     git pull origin main
                     """
                 }
-            }
-        }*/
-
-        stage('📥 Kaynak Kod Alma | SCM GitHub Checkout') {
-            steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[url: 'https://github.com/huseyinaydin99/devops.git']],
-                    extensions: [
-                        [$class: 'SparseCheckoutPaths',
-                            sparseCheckoutPaths: [[path: '006-devops-nextjs-kubernetes-jenkins-pipeline/']]
-                        ]
-                    ]
-                ])
             }
         }
 
