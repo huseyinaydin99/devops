@@ -25,7 +25,7 @@ export default function Home() {
                         </button>
 
                         <button className="rounded-xl bg-blue-600 px-4 py-2 hover:bg-blue-500 transition">
-                            GitHub
+                            GitHub Test
                         </button>
                     </div>
                 </nav>
