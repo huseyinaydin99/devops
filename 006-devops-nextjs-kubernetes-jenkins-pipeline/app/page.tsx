@@ -21,7 +21,7 @@ export default function Home() {
 
                     <div className="flex gap-4">
                         <button className="rounded-xl border border-zinc-800 px-4 py-2 hover:border-blue-500 transition">
-                            Dokümantasyon
+                            Dokümantasyon Test
                         </button>
 
                         <button className="rounded-xl bg-blue-600 px-4 py-2 hover:bg-blue-500 transition">
