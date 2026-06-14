@@ -41,7 +41,7 @@ export default function Home() {
                             Kubernetes
                             <br />
                             <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-                                Terraform
+                                Terraform/Ansible
                             </span>
                             <br />
                             Platform
